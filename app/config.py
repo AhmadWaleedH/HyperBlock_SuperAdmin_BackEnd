@@ -22,17 +22,17 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
 
     # Discord Settings
-    DISCORD_CLIENT_ID: str = "1298459256772624504"
-    DISCORD_CLIENT_SECRET: str = "8eDm0dE5Y5qosFQph7IqHJQKEwqNuTLu"
-    DISCORD_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/discord/callback"
-    DISCORD_API_ENDPOINT: str = "https://discord.com/api/v10"
+    DISCORD_CLIENT_ID: str = Field(default="1234567890")
+    DISCORD_CLIENT_SECRET: str = Field(default="abcdefghijklmnopqrstuvwxyz")
+    DISCORD_REDIRECT_URI: str = Field(default="/api/v1/auth/discord/callback")
+    DISCORD_API_ENDPOINT: str = Field(default="https://discord.com/api/v10")
 
     # Twitter Settings
-    TWITTER_CLIENT_ID: str = "UGs5Q3M4MHVCR29nbjBiZXp5S0o6MTpjaQ"
-    TWITTER_CLIENT_SECRET: str = "LMifdmAhutugQGn6caxxGklSiu9Y6mWYJ09FD9iQZf5vBFBEcx"
-    TWITTER_REDIRECT_URI: str = "http://localhost:3000/connect/twitter/callback"
-    TWITTER_AUTH_URL: str = "https://twitter.com/i/oauth2/authorize"
-    TWITTER_TOKEN_URL: str = "https://api.twitter.com/2/oauth2/token"
+    TWITTER_CLIENT_ID: str = Field(default="abcdedfghijklmnopqrstuvwxyz")
+    TWITTER_CLIENT_SECRET: str = Field(default="abcdefghijklmnopqrstuvwxyz")
+    TWITTER_REDIRECT_URI: str = Field(default="/connect/twitter/callback")
+    TWITTER_AUTH_URL: str = Field(default="https://twitter.com/i/oauth2/authorize")
+    TWITTER_TOKEN_URL: str = Field(default="https://api.twitter.com/2/oauth2/token")
         
     class Config:
         env_file = ".env"
@@ -45,5 +45,14 @@ settings = Settings(
     MONGODB_DB_NAME=os.getenv("MONGODB_DB_NAME", "hyperblock"),
     SECRET_KEY=os.getenv("SECRET_KEY", "ecret_key"),
     ALGORITHM=os.getenv("ALGORITHM", "HS256"),
-    ACCESS_TOKEN_EXPIRE_MINUTES=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    ACCESS_TOKEN_EXPIRE_MINUTES=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
+    DISCORD_CLIENT_ID=os.getenv("DISCORD_CLIENT_ID", "1234567890"),
+    DISCORD_CLIENT_SECRET=os.getenv("DISCORD_CLIENT_SECRET", "abcdefghijklmnopqrstuvwxyz"),
+    DISCORD_REDIRECT_URI=os.getenv("DISCORD_REDIRECT_URI", "/api/v1/auth/discord/callback"),
+    DISCORD_API_ENDPOINT=os.getenv("DISCORD_API_ENDPOINT", "https://discord.com/api/v10"),
+    TWITTER_CLIENT_ID=os.getenv("TWITTER_CLIENT_ID", "abcdedfghijklmnopqrstuvwxyz"),
+    TWITTER_CLIENT_SECRET=os.getenv("TWITTER_CLIENT_SECRET", "abcdefghijklmnopqrstuvwxyz"),
+    TWITTER_REDIRECT_URI=os.getenv("TWITTER_REDIRECT_URI", "/connect/twitter/callback"),
+    TWITTER_AUTH_URL=os.getenv("TWITTER_AUTH_URL", "https://twitter.com/i/oauth2/authorize"),
+    TWITTER_TOKEN_URL=os.getenv("TWITTER_TOKEN_URL", "https://api.twitter.com/2/oauth2/token"),
 )
