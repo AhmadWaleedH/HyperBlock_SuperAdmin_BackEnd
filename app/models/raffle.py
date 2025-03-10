@@ -8,14 +8,18 @@ from .user import PyObjectId, MongoBaseModel
 # Participant and Winner models
 class Participant(BaseModel):
     userId: str
+    userName: Optional[str] = None
 
 class Winner(BaseModel):
     userId: str
+    userName: Optional[str] = None
 
 # Main Raffle (Giveaway) model
 class RaffleModel(MongoBaseModel):
     guildId: str
+    guildName: Optional[str] = None
     channelId: Optional[str] = None
+    channelName: Optional[str] = None
     messageId: Optional[str] = None
     raffleTitle: str
     numWinners: int
@@ -26,7 +30,9 @@ class RaffleModel(MongoBaseModel):
     description: Optional[str] = None
     partnerTwitter: Optional[str] = None
     winnerRole: Optional[str] = None
+    winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None
+    roleRequiredName: Optional[str] = None
     entriesLimited: Optional[int] = None
     notes: Optional[str] = None
     totalParticipants: int = 0
@@ -39,7 +45,9 @@ class RaffleModel(MongoBaseModel):
 # Create/Update models
 class RaffleCreate(BaseModel):
     guildId: str
+    guildName: Optional[str] = None
     channelId: Optional[str] = None
+    channelName: Optional[str] = None
     messageId: Optional[str] = None
     raffleTitle: str
     numWinners: int
@@ -50,12 +58,15 @@ class RaffleCreate(BaseModel):
     description: Optional[str] = None
     partnerTwitter: Optional[str] = None
     winnerRole: Optional[str] = None
+    winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None
+    roleRequiredName: Optional[str] = None
     entriesLimited: Optional[int] = None
     notes: Optional[str] = None
 
 class RaffleUpdate(BaseModel):
     channelId: Optional[str] = None
+    channelName: Optional[str] = None
     messageId: Optional[str] = None
     raffleTitle: Optional[str] = None
     numWinners: Optional[int] = None
@@ -66,7 +77,9 @@ class RaffleUpdate(BaseModel):
     description: Optional[str] = None
     partnerTwitter: Optional[str] = None
     winnerRole: Optional[str] = None
+    winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None
+    roleRequiredName: Optional[str] = None
     entriesLimited: Optional[int] = None
     notes: Optional[str] = None
     isExpired: Optional[bool] = None
@@ -74,6 +87,7 @@ class RaffleUpdate(BaseModel):
 # Participant operations
 class AddParticipantModel(BaseModel):
     userId: str
+    userName: Optional[str] = None
 
 # Winner operations
 class DrawWinnersModel(BaseModel):

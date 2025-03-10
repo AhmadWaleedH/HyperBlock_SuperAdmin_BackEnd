@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Annotated
-from pydantic import BaseModel, Field, field_serializer, model_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 from datetime import datetime
 from bson import ObjectId
 import json
@@ -79,6 +79,12 @@ class MintWallets(BaseModel):
     Polkadot: Optional[str] = None
     Ripple: Optional[str] = None
 
+# Server Membership Counter Schema
+class ServerMembershipCounter(BaseModel):
+    previousParticipationPoints: int = 0
+    eventEngager: int = 0
+    activeParticipant: bool = True
+
 # Server Membership Schema
 class ServerMembership(BaseModel):
     guildId: str
@@ -90,6 +96,8 @@ class ServerMembership(BaseModel):
     points: Optional[int] = None
     activeRaids: Optional[int] = None
     completedTasks: Optional[int] = None
+    counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)
+    userType: str = "member"
 
 # Purchase Schema
 class Purchase(BaseModel):
@@ -121,16 +129,25 @@ class UserModel(MongoBaseModel):
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
     subscription: Subscription = Field(default_factory=Subscription)
-    status: str = "active"
+    userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
     socialAccounts: Optional[SocialAccounts] = None
     mintWallets: Optional[MintWallets] = None
     serverMemberships: List[ServerMembership] = Field(default_factory=list)
     purchases: List[Purchase] = Field(default_factory=list)
     activeBids: List[Bid] = Field(default_factory=list)
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
     lastActive: Optional[datetime] = None
+
+    @field_validator('userGlobalStatus')
+    def validate_status(cls, value):
+        if value not in ["active", "inactive", "banned"]:
+            raise ValueError("Status must be one of: active, inactive, banned")
+        return value
 
 # User Create Schema (for API input)
 class UserCreate(BaseModel):
@@ -140,8 +157,11 @@ class UserCreate(BaseModel):
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = 0
     subscription: Optional[Subscription] = None
-    status: str = "active"
+    userGlobalStatus: str = "active"
     socials: Optional[SocialLinks] = None
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
 
 # User Update Schema (for API input)
 class UserUpdate(BaseModel):
@@ -150,15 +170,18 @@ class UserUpdate(BaseModel):
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
     subscription: Optional[Subscription] = None
-    status: Optional[str] = None
+    userGlobalStatus: Optional[str] = None
     socials: Optional[SocialLinks] = None
     mintWallets: Optional[MintWallets] = None
     lastActive: Optional[datetime] = None
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
 
 # User Filter Schema (for query parameters)
 class UserFilter(BaseModel):
     subscription_tier: Optional[str] = None
-    status: Optional[str] = None
+    userGlobalStatus: Optional[str] = None
     wallet_type: Optional[str] = None
     min_points: Optional[int] = None
     max_points: Optional[int] = None

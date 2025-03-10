@@ -44,16 +44,31 @@ pip install -r requirements.txt
 4. Configure environment variables
    - Copy `.env.example` to `.env`
    - Update the values in `.env` with your configuration
+```bash
+cp .env.example .env
+```
 
 ### Running the API
 
-1. Start the server
+You can start the API server using either **Docker Compose** or a Python script.
+
+#### 1. Start the server manually
 ```bash
 # Development with auto-reload
 uvicorn app.main:app --reload
 
 # Production
 uvicorn app.main:app
+```
+
+#### 2. Start the server using `run.py`
+```bash
+python run.py
+```
+
+#### 3. Start the server using Docker Compose
+```bash
+docker-compose up --build
 ```
 
 2. Access the API documentation

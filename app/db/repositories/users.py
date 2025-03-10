@@ -51,7 +51,7 @@ class UserRepository:
         if not ObjectId.is_valid(user_id):
             return None
             
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update if isinstance(user_update, dict) else user_update.dict(exclude_unset=True)
         if update_data:
             update_data["updatedAt"] = datetime.now()
             
@@ -86,8 +86,8 @@ class UserRepository:
         if filter_params.subscription_tier:
             query["subscription.tier"] = filter_params.subscription_tier
             
-        if filter_params.status:
-            query["status"] = filter_params.status
+        if filter_params.userGlobalStatus:
+            query["userGlobalStatus"] = filter_params.userGlobalStatus
             
         if filter_params.wallet_type:
             query[f"mintWallets.{filter_params.wallet_type}"] = {"$exists": True, "$ne": None}

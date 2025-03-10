@@ -93,12 +93,6 @@ class GuildRepository:
         if filter_params.user_category:
             query["userCategory"] = filter_params.user_category
             
-        if filter_params.rating:
-            query["analytics.rating"] = filter_params.rating
-            
-        if filter_params.is_top10 is not None:
-            query["analytics.isTop10"] = filter_params.is_top10
-            
         if filter_params.bot_enabled is not None:
             query["botConfig.enabled"] = filter_params.bot_enabled
             
@@ -112,6 +106,14 @@ class GuildRepository:
         if filter_params.created_before:
             query["createdAt"] = query.get("createdAt", {})
             query["createdAt"]["$lte"] = filter_params.created_before
+
+        if filter_params.total_members_min is not None:
+            query["totalMembers"] = query.get("totalMembers", {})
+            query["totalMembers"]["$gte"] = filter_params.total_members_min
+            
+        if filter_params.total_members_max is not None:
+            query["totalMembers"] = query.get("totalMembers", {})
+            query["totalMembers"]["$lte"] = filter_params.total_members_max
         
         # Count total documents matching the query
         total = await self.collection.count_documents(query)
@@ -157,15 +159,20 @@ class GuildRepository:
     
     async def get_guild_analytics(self) -> Dict[str, Any]:
         """
-        Get analytics for all guilds
+        Get analytics for all guilds using the new schema
         """
         pipeline = [
             {
                 "$group": {
                     "_id": "$subscription.tier", 
                     "count": {"$sum": 1},
-                    "avgActiveUsers": {"$avg": "$analytics.metrics.activeUsers"},
-                    "avgMessageCount": {"$avg": "$analytics.metrics.messageCount"},
+                    "avgCAS": {"$avg": "$analytics.CAS"},
+                    "avgCHS": {"$avg": "$analytics.CHS"},
+                    "avgEAS": {"$avg": "$analytics.EAS"},
+                    "avgCCS": {"$avg": "$analytics.CCS"},
+                    "avgERC": {"$avg": "$analytics.ERC"},
+                    "totalVault": {"$sum": "$analytics.vault"},
+                    "totalReservedPoints": {"$sum": "$analytics.reservedPoints"}
                 }
             },
             {
@@ -181,16 +188,24 @@ class GuildRepository:
             {"$sort": {"count": -1}}
         ]).to_list(length=None)
         
-        # Count guilds by rating
-        ratings = await self.collection.aggregate([
-            {"$group": {"_id": "$analytics.rating", "count": {"$sum": 1}}},
-            {"$sort": {"_id": 1}}
+        # Counter statistics
+        counter_stats = await self.collection.aggregate([
+            {
+                "$group": {
+                    "_id": None,
+                    "avgAnnouncementCount": {"$avg": "$counter.announcementCount"},
+                    "avgEventCount": {"$avg": "$counter.eventCount"},
+                    "avgTotalActiveParticipants": {"$avg": "$counter.totalActiveParticipants"},
+                    "avgStoreUpdateCount": {"$avg": "$counter.storeUpdateCount"},
+                    "avgAuctionUpdateCount": {"$avg": "$counter.auctionUpdateCount"}
+                }
+            }
         ]).to_list(length=None)
         
         return {
             "subscription_tiers": result,
             "categories": categories,
-            "ratings": ratings,
+            "counter_stats": counter_stats[0] if counter_stats else {},
             "total_guilds": await self.collection.count_documents({}),
             "active_bots": await self.collection.count_documents({"botConfig.enabled": True})
         }

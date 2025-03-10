@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, field_serializer, validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from datetime import datetime
 from bson import ObjectId
 
@@ -10,11 +10,13 @@ class ShopItemModel(MongoBaseModel):
     name: str
     price: float
     role: Optional[str] = None
+    roleName: Optional[str] = None
     quantity: int = -1  # -1 means unlimited
     description: Optional[str] = None
     allowMultiplePurchases: bool = False
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
+    requiredRoleToPurchaseName: Optional[str] = None
     server: Optional[PyObjectId] = None  # Reference to Guild
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
@@ -24,7 +26,7 @@ class ShopItemModel(MongoBaseModel):
     def serialize_server(self, server: Optional[ObjectId]) -> Optional[str]:
         return str(server) if server else None
     
-    @validator('price')
+    @field_validator('price')
     def price_must_be_positive(cls, v):
         if v <= 0:
             raise ValueError('Price must be positive')
@@ -35,14 +37,16 @@ class ShopItemCreate(BaseModel):
     name: str
     price: float
     role: Optional[str] = None
+    roleName: Optional[str] = None
     quantity: Optional[int] = -1
     description: Optional[str] = None
     allowMultiplePurchases: Optional[bool] = False
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
+    requiredRoleToPurchaseName: Optional[str] = None
     server: Optional[str] = None  # Guild ID
     
-    @validator('price')
+    @field_validator('price')
     def price_must_be_positive(cls, v):
         if v <= 0:
             raise ValueError('Price must be positive')
@@ -52,14 +56,16 @@ class ShopItemUpdate(BaseModel):
     name: Optional[str] = None
     price: Optional[float] = None
     role: Optional[str] = None
+    roleName: Optional[str] = None
     quantity: Optional[int] = None
     description: Optional[str] = None
     allowMultiplePurchases: Optional[bool] = None
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
+    requiredRoleToPurchaseName: Optional[str] = None
     server: Optional[str] = None  # Guild ID
     
-    @validator('price')
+    @field_validator('price')
     def price_must_be_positive(cls, v):
         if v is not None and v <= 0:
             raise ValueError('Price must be positive')
@@ -70,7 +76,7 @@ class PurchaseItemModel(BaseModel):
     userId: str
     quantity: int = 1
     
-    @validator('quantity')
+    @field_validator('quantity')
     def quantity_must_be_positive(cls, v):
         if v <= 0:
             raise ValueError('Quantity must be positive')

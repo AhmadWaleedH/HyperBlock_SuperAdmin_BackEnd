@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Any, Union, Literal
-from pydantic import BaseModel, Field, field_serializer, validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from datetime import datetime
 from bson import ObjectId
 
@@ -8,6 +8,7 @@ from .user import PyObjectId, MongoBaseModel
 # Bidder model
 class Bidder(BaseModel):
     userId: str
+    userName: Optional[str] = None
     bidAmount: float
     walletAddress: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -15,6 +16,7 @@ class Bidder(BaseModel):
 # Winner model
 class Winner(BaseModel):
     userId: Optional[str] = None
+    userName: Optional[str] = None
     winningBid: Optional[float] = None
 
 # Main Auction model
@@ -24,7 +26,9 @@ class AuctionModel(MongoBaseModel):
     chain: str
     duration: datetime
     roleForWinner: Optional[str] = None
+    roleForWinnerName: Optional[str] = None
     guildId: str
+    guildName: Optional[str] = None
     description: Optional[str] = None
     roleRequired: Optional[str] = None
     minimumBid: float = 0
@@ -37,13 +41,13 @@ class AuctionModel(MongoBaseModel):
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
 
-    @validator('quantity')
+    @field_validator('quantity')
     def quantity_must_be_positive(cls, v):
         if v < 0:
             raise ValueError('Quantity must be non-negative')
         return v
 
-    @validator('minimumBid')
+    @field_validator('minimumBid')
     def minimum_bid_must_be_non_negative(cls, v):
         if v < 0:
             raise ValueError('Minimum bid must be non-negative')
@@ -56,7 +60,9 @@ class AuctionCreate(BaseModel):
     chain: str
     duration: datetime
     roleForWinner: Optional[str] = None
+    roleForWinnerName: Optional[str] = None
     guildId: str
+    guildName: Optional[str] = None
     description: Optional[str] = None
     roleRequired: Optional[str] = None
     minimumBid: float = 0
@@ -68,19 +74,20 @@ class AuctionUpdate(BaseModel):
     chain: Optional[str] = None
     duration: Optional[datetime] = None
     roleForWinner: Optional[str] = None
+    roleForWinnerName: Optional[str] = None
     description: Optional[str] = None
     roleRequired: Optional[str] = None
     minimumBid: Optional[float] = None
     blindAuction: Optional[bool] = None
     status: Optional[Literal["active", "ended", "cancelled"]] = None
 
-    @validator('quantity')
+    @field_validator('quantity')
     def quantity_must_be_positive(cls, v):
         if v is not None and v < 0:
             raise ValueError('Quantity must be non-negative')
         return v
 
-    @validator('minimumBid')
+    @field_validator('minimumBid')
     def minimum_bid_must_be_non_negative(cls, v):
         if v is not None and v < 0:
             raise ValueError('Minimum bid must be non-negative')
@@ -89,6 +96,7 @@ class AuctionUpdate(BaseModel):
 # Bid model
 class PlaceBidModel(BaseModel):
     userId: str
+    userName: Optional[str] = None
     bidAmount: float
     walletAddress: Optional[str] = None
 
