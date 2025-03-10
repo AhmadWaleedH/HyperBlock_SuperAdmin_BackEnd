@@ -128,6 +128,9 @@ class UserModel(MongoBaseModel):
     serverMemberships: List[ServerMembership] = Field(default_factory=list)
     purchases: List[Purchase] = Field(default_factory=list)
     activeBids: List[Bid] = Field(default_factory=list)
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
     lastActive: Optional[datetime] = None
@@ -142,6 +145,9 @@ class UserCreate(BaseModel):
     subscription: Optional[Subscription] = None
     status: str = "active"
     socials: Optional[SocialLinks] = None
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
 
 # User Update Schema (for API input)
 class UserUpdate(BaseModel):
@@ -154,6 +160,9 @@ class UserUpdate(BaseModel):
     socials: Optional[SocialLinks] = None
     mintWallets: Optional[MintWallets] = None
     lastActive: Optional[datetime] = None
+    discord_access_token: Optional[str] = None
+    discord_refresh_token: Optional[str] = None
+    discord_token_expires_at: Optional[datetime] = None
 
 # User Filter Schema (for query parameters)
 class UserFilter(BaseModel):

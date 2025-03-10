@@ -51,7 +51,7 @@ class UserRepository:
         if not ObjectId.is_valid(user_id):
             return None
             
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update if isinstance(user_update, dict) else user_update.dict(exclude_unset=True)
         if update_data:
             update_data["updatedAt"] = datetime.now()
             
