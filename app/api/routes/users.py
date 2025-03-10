@@ -75,7 +75,7 @@ async def delete_user(
 @router.get("/", response_model=UserListResponse)
 async def list_users(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
-    status: Optional[str] = Query(None, description="Filter by user status"),
+    userGlobalStatus: Optional[str] = Query(None, description="Filter by user status"),
     wallet_type: Optional[str] = Query(None, description="Filter by wallet type"),
     min_points: Optional[int] = Query(None, description="Minimum hyperblock points"),
     max_points: Optional[int] = Query(None, description="Maximum hyperblock points"),
@@ -92,7 +92,7 @@ async def list_users(
     # Create filter and pagination objects
     filter_params = UserFilter(
         subscription_tier=subscription_tier,
-        status=status,
+        userGlobalStatus=userGlobalStatus,
         wallet_type=wallet_type,
         min_points=min_points,
         max_points=max_points,

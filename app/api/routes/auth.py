@@ -208,6 +208,33 @@ async def refresh_jwt_token(request: Request, db=Depends(get_database)):
     
     # Try to decode the expired token to get user info
     try:
+        # First, check if token is actually expired
+        try:
+            # Try to decode with expiration check
+            payload = jwt.decode(
+                token, 
+                settings.SECRET_KEY, 
+                algorithms=[settings.ALGORITHM]
+            )
+            
+            # If we get here, token is still valid, no need to refresh
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token is still valid, no need to refresh"
+            )
+            
+        except JWTError as e:
+            # Check if the error is due to expiration
+            if "expired" not in str(e).lower():
+                # If it's another kind of error, token is invalid
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            # Token is expired, continue with refresh process
+            pass
         # Allow expired tokens to be decoded for this specific endpoint
         # only using it to identify the user, not for authentication
         payload = jwt.decode(

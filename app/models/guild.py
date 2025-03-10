@@ -27,14 +27,27 @@ class UserChannels(BaseModel):
     auctions: Optional[str] = None
 
 class ChatConfig(BaseModel):
-    channels: List[str] = Field(default_factory=list)
+    channelId: Optional[str] = None
+    channelName: Optional[str] = None
     cooldown: int = 0
     points: int = 0
 
 class ReactionConfig(BaseModel):
-    channels: List[str] = Field(default_factory=list)
+    channelId: Optional[str] = None
+    channelName: Optional[str] = None
     cooldown: int = 0
     points: int = 0
+
+class GuildCounter(BaseModel):
+    announcementCount: int = 0
+    weeklyAnnouncementFrequency: int = 0
+    eventCount: int = 0
+    weeklyEventFrequency: int = 0
+    totalActiveParticipants: int = 0
+    storeUpdateCount: int = 0
+    weeklyStoreUpdateFrequency: int = 0
+    auctionUpdateCount: int = 0
+    weeklyAuctionUpdateFrequency: int = 0
 
 class BotConfig(BaseModel):
     enabled: Optional[bool] = None
@@ -59,7 +72,7 @@ class PointsSystem(BaseModel):
     actions: PointsActions = Field(default_factory=PointsActions)
 
 class GuildSubscription(BaseModel):
-    tier: Optional[str] = "Free"
+    tier: str = "free"
     startDate: Optional[datetime] = None
     endDate: Optional[datetime] = None
     autoRenew: Optional[bool] = None
@@ -69,12 +82,15 @@ class AnalyticsMetrics(BaseModel):
     messageCount: Optional[int] = None
     taskCompletion: Optional[int] = None
     pointsUsage: Optional[int] = None
-    chatHealth: Optional[int] = None
 
 class GuildAnalytics(BaseModel):
-    rating: Optional[str] = None
-    rank: Optional[int] = None
-    isTop10: Optional[bool] = None
+    CAS: int = 0
+    CHS: int = 0
+    EAS: int = 0
+    CCS: int = 0
+    ERC: int = 0
+    vault: int = 0
+    reservedPoints: int = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)
 
 # Main Guild model
@@ -82,7 +98,8 @@ class GuildModel(MongoBaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
-    ownerDiscordId: str
+    ownerDiscordId: Optional[str] = None
+    totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     category: Optional[str] = None
     userCategory: Optional[str] = None
@@ -90,6 +107,7 @@ class GuildModel(MongoBaseModel):
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
     subscription: GuildSubscription = Field(default_factory=GuildSubscription)
+    counter: GuildCounter = Field(default_factory=GuildCounter)
     analytics: GuildAnalytics = Field(default_factory=GuildAnalytics)
     shop: List[PyObjectId] = Field(default_factory=list)
     createdAt: datetime = Field(default_factory=datetime.now)
@@ -105,7 +123,8 @@ class GuildCreate(BaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
-    ownerDiscordId: str
+    ownerDiscordId: Optional[str] = None
+    totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     category: Optional[str] = None
     userCategory: Optional[str] = None
@@ -113,11 +132,13 @@ class GuildCreate(BaseModel):
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
     subscription: Optional[GuildSubscription] = None
+    counter: Optional[GuildCounter] = None
 
 class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
     guildIconURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
+    totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     category: Optional[str] = None
     userCategory: Optional[str] = None
@@ -125,6 +146,7 @@ class GuildUpdate(BaseModel):
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
     subscription: Optional[GuildSubscription] = None
+    counter: Optional[GuildCounter] = None
     analytics: Optional[GuildAnalytics] = None
 
 # Filter model
@@ -132,12 +154,12 @@ class GuildFilter(BaseModel):
     subscription_tier: Optional[str] = None
     category: Optional[str] = None
     user_category: Optional[str] = None
-    rating: Optional[str] = None
-    is_top10: Optional[bool] = None
     bot_enabled: Optional[bool] = None
     owner_discord_id: Optional[str] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None
+    total_members_min: Optional[int] = None
+    total_members_max: Optional[int] = None
 
 # Response models
 class GuildListResponse(BaseModel):

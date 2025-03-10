@@ -86,8 +86,8 @@ class UserRepository:
         if filter_params.subscription_tier:
             query["subscription.tier"] = filter_params.subscription_tier
             
-        if filter_params.status:
-            query["status"] = filter_params.status
+        if filter_params.userGlobalStatus:
+            query["userGlobalStatus"] = filter_params.userGlobalStatus
             
         if filter_params.wallet_type:
             query[f"mintWallets.{filter_params.wallet_type}"] = {"$exists": True, "$ne": None}
