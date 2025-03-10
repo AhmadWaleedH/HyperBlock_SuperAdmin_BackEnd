@@ -142,7 +142,7 @@ async def discord_callback(code: str, state: str, request: Request, db=Depends(g
             discordUsername=discord_data.get("username", ""),
             discordUserAvatarURL=f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_data.get('avatar')}.png" if discord_data.get('avatar') else None,
             hyperBlockPoints=0,
-            status="active",
+            userGlobalStatus="active",
             subscription=Subscription(),
             socials=SocialLinks(),
             discord_access_token=discord_access_token,
@@ -245,6 +245,7 @@ async def refresh_jwt_token(request: Request, db=Depends(get_database)):
         )
         
         user_id = payload.get("sub")
+        user_role = payload.get("role", "user")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -252,6 +253,25 @@ async def refresh_jwt_token(request: Request, db=Depends(get_database)):
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
+        # Handle super admin case
+        if user_role == "admin" and user_id == "admin":
+            # For admin users, we don't need to check Discord token
+            # Create new JWT token with admin role
+            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={
+                    "sub": user_id,
+                    "role": "admin"
+                },
+                expires_delta=access_token_expires
+            )
+            
+            return {
+                "access_token": access_token,
+                "token_type": "bearer"
+            }
+        
+        # For regular users
         # Get user from database
         user_repo = UserRepository(db)
         user = await user_repo.get_by_id(user_id)
