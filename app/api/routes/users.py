@@ -266,15 +266,35 @@ async def twitter_callback(
             # Create Basic auth header with client credentials
             auth_credentials = f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}"
             encoded_credentials = base64.b64encode(auth_credentials.encode()).decode()
-            # Get Twitter access token
-            token_response = await client.post(
-                settings.TWITTER_TOKEN_URL, 
-                data=token_data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": f"Basic {encoded_credentials}"
-                }
-            )
+            
+            # Prepare token request data
+            token_data = {
+                'code': code,
+                'grant_type': 'authorization_code',
+                'client_id': settings.TWITTER_CLIENT_ID,
+                'redirect_uri': settings.TWITTER_REDIRECT_URI,
+                'code_verifier': state  # Using state as code verifier for simplicity
+            }
+            
+            # Convert data to form-urlencoded format
+            form_data = urlencode(token_data)
+            
+            async with httpx.AsyncClient() as client:
+                # Get Twitter access token with proper headers
+                token_response = await client.post(
+                    settings.TWITTER_TOKEN_URL,
+                    content=form_data,
+                    headers={
+                        "Authorization": f"Basic {encoded_credentials}",
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    }
+                )
+                
+                # Debug response
+                print(f"Token response status: {token_response.status_code}")
+                print(f"Token response headers: {token_response.headers}")
+                print(f"Token response body: {token_response.text}")
+            
             
             if token_response.status_code != 200:
                 raise HTTPException(
