@@ -1,3 +1,4 @@
+import base64
 import secrets
 import string
 from urllib.parse import urlencode
@@ -253,7 +254,7 @@ async def twitter_callback(
     # Exchange code for access token
     token_data = {
         'client_id': settings.TWITTER_CLIENT_ID,
-        'client_secret': settings.TWITTER_CLIENT_SECRET,
+        # 'client_secret': settings.TWITTER_CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'code': code,
         'redirect_uri': settings.TWITTER_REDIRECT_URI,
@@ -262,11 +263,17 @@ async def twitter_callback(
     
     try:
         async with httpx.AsyncClient() as client:
+            # Create Basic auth header with client credentials
+            auth_credentials = f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}"
+            encoded_credentials = base64.b64encode(auth_credentials.encode()).decode()
             # Get Twitter access token
             token_response = await client.post(
                 settings.TWITTER_TOKEN_URL, 
                 data=token_data,
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": f"Basic {encoded_credentials}"
+                }
             )
             
             if token_response.status_code != 200:
