@@ -72,7 +72,7 @@ async def delete_user(
     """
     return await user_service.delete_user(user_id)
 
-@router.get("/", response_model=UserListResponse)
+@router.get("/", response_model=UserListResponse, dependencies=[Depends(get_current_admin)])
 async def list_users(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
     userGlobalStatus: Optional[str] = Query(None, description="Filter by user status"),
