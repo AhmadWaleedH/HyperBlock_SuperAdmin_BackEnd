@@ -19,7 +19,7 @@ app.add_middleware(
     SessionMiddleware, 
     secret_key=settings.SECRET_KEY,
     max_age=3600,  # Session expiration in seconds (1 hour)
-    same_site="lax",  # CSRF protection
+    same_site="none" if not settings.DEBUG else "lax",
     https_only=settings.DEBUG is False  # HTTPS in production
 )
 

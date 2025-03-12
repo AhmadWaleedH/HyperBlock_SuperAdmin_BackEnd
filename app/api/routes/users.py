@@ -231,6 +231,7 @@ async def connect_twitter_account(request: Request):
     """
     Generate Twitter OAuth URL for account connection
     """
+
     # Generate state token to prevent CSRF
     state = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
 
@@ -241,6 +242,10 @@ async def connect_twitter_account(request: Request):
     # Store code_verifier in session for later use
     request.session["twitter_code_verifier"] = code_verifier
     request.session["twitter_state"] = state
+    
+    """
+    TODO: Update State token from session storage to redis or database
+    """
     
     # Construct the Twitter OAuth URL
     params = {

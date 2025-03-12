@@ -57,6 +57,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     
     return {"access_token": access_token, "token_type": "bearer"}
 
+# -----------------------------------------------------------------------------
+# OAuth2 flow:
+# 1. Redirect user to Discord OAuth URL
+# 2. User logs in and authorizes the app
+# 3. Discord redirects user back to our callback URL
+# 4. We exchange the code for an access token
+# 5. We get user data from Discord
+# 6. We create a JWT token for the user
+# 7. We return the JWT token and user data
+# -----------------------------------------------------------------------------
 # OAuth2 Discord Login
 @router.get("/discord")
 async def discord_login():
@@ -180,8 +190,6 @@ async def discord_callback(code: str, state: str, request: Request, db=Depends(g
     
     # Convert user model to dict for response
     user_dict = user.model_dump(by_alias=True)
-
-    print(user_dict)
     
     return {
         "access_token": access_token, 
