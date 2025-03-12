@@ -62,6 +62,10 @@ class TwitterAccount(BaseModel):
     id: Optional[str] = None
     username: Optional[str] = None
     profileUrl: Optional[str] = None
+    tokenType: Optional[str] = None
+    accessToken: Optional[str] = None
+    refreshToken: Optional[str] = None
+    tokenExpiresAt: Optional[datetime] = None
 
 class SocialAccounts(BaseModel):
     twitter: Optional[TwitterAccount] = None
@@ -172,6 +176,7 @@ class UserUpdate(BaseModel):
     subscription: Optional[Subscription] = None
     userGlobalStatus: Optional[str] = None
     socials: Optional[SocialLinks] = None
+    socialAccounts: Optional[SocialAccounts] = None
     mintWallets: Optional[MintWallets] = None
     lastActive: Optional[datetime] = None
     discord_access_token: Optional[str] = None

@@ -1,15 +1,16 @@
 import base64
+import hashlib
 import secrets
 import string
 from urllib.parse import urlencode
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, Request, status
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.api.dependencies import get_current_admin, get_current_user
 
 from ...models.user import (
-    SocialAccounts, TwitterAccount, UserModel, UserCreate, UserUpdate, UserFilter, 
+    SocialAccounts, SocialLinks, TwitterAccount, UserModel, UserCreate, UserUpdate, UserFilter, 
     UserListResponse, PaginationParams
 )
 from ...services.user_service import UserService
@@ -215,24 +216,41 @@ class TwitterAccountResponse(BaseModel):
     connected: bool
     account: Optional[TwitterAccount] = None
 
+# helper functions for PKCE
+def generate_code_verifier(length=64):
+    return ''.join(secrets.choice(string.ascii_letters + string.digits + '-._~') for _ in range(length))
+
+def generate_code_challenge(verifier):
+    hash_digest = hashlib.sha256(verifier.encode('utf-8')).digest()
+    b64_digest = base64.urlsafe_b64encode(hash_digest).decode('utf-8')
+    return b64_digest.rstrip('=')
+
 # Twitter Account Connection Endpoints
 @router.get("/connect/twitter", response_model=TwitterAuthResponse)
-async def connect_twitter_account():
+async def connect_twitter_account(request: Request):
     """
     Generate Twitter OAuth URL for account connection
     """
     # Generate state token to prevent CSRF
     state = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
+
+    # Generate PKCE code verifier and challenge
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
+
+    # Store code_verifier in session for later use
+    request.session["twitter_code_verifier"] = code_verifier
+    request.session["twitter_state"] = state
     
     # Construct the Twitter OAuth URL
     params = {
         'response_type': 'code',
         'client_id': settings.TWITTER_CLIENT_ID,
         'redirect_uri': settings.TWITTER_REDIRECT_URI,
-        'scope': 'tweet.read users.read',
+        'scope': 'tweet.read users.read offline.access',
         'state': state,
-        'code_challenge': state,
-        'code_challenge_method': 'plain'
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256'
     }
     
     auth_url = f"{settings.TWITTER_AUTH_URL}?{urlencode(params)}"
@@ -243,57 +261,53 @@ async def connect_twitter_account():
 async def twitter_callback(
     code: str,
     state: str,
+    request: Request,
     current_user: UserModel = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     """
     Handle Twitter OAuth callback and connect account to user profile
     """
-    # In production, validate state against stored value
+    # Verify state to prevent CSRF
+    stored_state = request.session.get("twitter_state")
+    if not stored_state or stored_state != state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid state parameter. Expected: {stored_state}, Got: {state}"
+        )
+    
+    # Get stored code_verifier
+    code_verifier = request.session.get("twitter_code_verifier")
+    if not code_verifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing code verifier"
+        )
     
     # Exchange code for access token
     token_data = {
         'client_id': settings.TWITTER_CLIENT_ID,
-        # 'client_secret': settings.TWITTER_CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'code': code,
         'redirect_uri': settings.TWITTER_REDIRECT_URI,
-        'code_verifier': state  # Using state as code verifier for simplicity
+        'code_verifier': code_verifier
     }
-    
+        
     try:
         async with httpx.AsyncClient() as client:
             # Create Basic auth header with client credentials
             auth_credentials = f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}"
             encoded_credentials = base64.b64encode(auth_credentials.encode()).decode()
             
-            # Prepare token request data
-            token_data = {
-                'code': code,
-                'grant_type': 'authorization_code',
-                'client_id': settings.TWITTER_CLIENT_ID,
-                'redirect_uri': settings.TWITTER_REDIRECT_URI,
-                'code_verifier': state  # Using state as code verifier for simplicity
-            }
-            
-            # Convert data to form-urlencoded format
-            form_data = urlencode(token_data)
-            
-            async with httpx.AsyncClient() as client:
-                # Get Twitter access token with proper headers
-                token_response = await client.post(
-                    settings.TWITTER_TOKEN_URL,
-                    content=form_data,
-                    headers={
-                        "Authorization": f"Basic {encoded_credentials}",
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    }
-                )
-                
-                # Debug response
-                print(f"Token response status: {token_response.status_code}")
-                print(f"Token response headers: {token_response.headers}")
-                print(f"Token response body: {token_response.text}")
+            # Get Twitter access token
+            token_response = await client.post(
+                settings.TWITTER_TOKEN_URL, 
+                data=token_data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": f"Basic {encoded_credentials}"
+                }
+            )
             
             
             if token_response.status_code != 200:
@@ -303,7 +317,13 @@ async def twitter_callback(
                 )
             
             token_data = token_response.json()
+            token_type = token_data.get("token_type")
             access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            expires_in = token_data.get("expires_in", 7200)
+
+            token_expires_at = datetime.now() + timedelta(seconds=expires_in)
+
             
             # Get Twitter user data
             user_response = await client.get(
@@ -329,10 +349,12 @@ async def twitter_callback(
             twitter_account = TwitterAccount(
                 id=twitter_data.get("id"),
                 username=twitter_data.get("username"),
-                profileUrl=twitter_data.get("profile_image_url")
+                profileUrl=twitter_data.get("profile_image_url"),
+                tokenType=token_type,
+                accessToken=access_token,
+                refreshToken=refresh_token,
+                tokenExpiresAt = token_expires_at
             )
-
-            print(twitter_account)
             
             # Create or update social accounts object
             social_accounts = current_user.socialAccounts or SocialAccounts()
@@ -343,7 +365,7 @@ async def twitter_callback(
                 socialAccounts=social_accounts,
                 lastActive=datetime.now()
             )
-            
+
             # If user doesn't have X/Twitter in socials, add it
             if not current_user.socials.x and twitter_account.username:
                 current_user.socials.x = f"https://twitter.com/{twitter_account.username}"

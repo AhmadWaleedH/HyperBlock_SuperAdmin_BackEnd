@@ -96,7 +96,7 @@ async def get_current_user(
         user_dict["role"] = role
         user_dict["is_admin"] = False
         
-        return user_dict
+        return UserModel.model_validate(user_dict)
         
     except (JWTError, ValidationError, Exception) as e:
         raise credentials_exception
