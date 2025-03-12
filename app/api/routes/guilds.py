@@ -10,7 +10,7 @@ from ...models.user import PaginationParams
 from ...services.guild_service import GuildService
 from ...db.repositories.guilds import GuildRepository
 from ...db.database import get_database
-from ..dependencies import get_current_admin
+from ..dependencies import get_current_admin, get_current_user
 
 router = APIRouter()
 
@@ -28,7 +28,7 @@ async def create_guild(
     """
     return await guild_service.create_guild(guild_data)
 
-@router.get("/{guild_id}", response_model=GuildModel)
+@router.get("/{guild_id}", response_model=GuildModel, dependencies=[Depends(get_current_admin)])
 async def get_guild(
     guild_id: str = Path(..., title="The ID of the guild to get"),
     guild_service: GuildService = Depends(get_guild_service)
@@ -38,7 +38,7 @@ async def get_guild(
     """
     return await guild_service.get_guild(guild_id)
 
-@router.get("/discord/{discord_guild_id}", response_model=GuildModel)
+@router.get("/discord/{discord_guild_id}", response_model=GuildModel, dependencies=[Depends(get_current_admin)])
 async def get_guild_by_discord_id(
     discord_guild_id: str = Path(..., title="The Discord ID of the guild to get"),
     guild_service: GuildService = Depends(get_guild_service)
@@ -48,7 +48,7 @@ async def get_guild_by_discord_id(
     """
     return await guild_service.get_guild_by_discord_id(discord_guild_id)
 
-@router.patch("/{guild_id}", response_model=GuildModel)
+@router.patch("/{guild_id}", response_model=GuildModel, dependencies=[Depends(get_current_user)])
 async def update_guild(
     guild_data: GuildUpdate,
     guild_id: str = Path(..., title="The ID of the guild to update"),

@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
 from .api.routes import router as api_router
-from .db.database import connect_to_mongo, close_mongo_connection
+from .db.database import connect_to_mongo, close_mongo_connection, init_subscriptions_db
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -39,6 +39,7 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 @app.on_event("startup")
 async def startup_db_client():
     await connect_to_mongo()
+    await init_subscriptions_db()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

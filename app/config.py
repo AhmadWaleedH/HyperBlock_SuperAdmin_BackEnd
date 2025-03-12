@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     TWITTER_REDIRECT_URI: str = Field(default="/connect/twitter/callback")
     TWITTER_AUTH_URL: str = Field(default="https://twitter.com/i/oauth2/authorize")
     TWITTER_TOKEN_URL: str = Field(default="https://api.twitter.com/2/oauth2/token")
+
+    # Cybersource Settings
+    CYBERSOURCE_MERCHANT_ID: str = os.getenv("CYBERSOURCE_MERCHANT_ID", "")
+    CYBERSOURCE_API_KEY_ID: str = os.getenv("CYBERSOURCE_API_KEY_ID", "")
+    CYBERSOURCE_SECRET_KEY: str = os.getenv("CYBERSOURCE_SECRET_KEY", "")
+    CYBERSOURCE_PROFILE_ID: str = os.getenv("CYBERSOURCE_PROFILE_ID", "")
+    CYBERSOURCE_ENVIRONMENT: str = os.getenv("CYBERSOURCE_ENVIRONMENT", "test")
+    CYBERSOURCE_WEBHOOK_SECRET: str = os.getenv("CYBERSOURCE_WEBHOOK_SECRET", "")
         
     class Config:
         env_file = ".env"
