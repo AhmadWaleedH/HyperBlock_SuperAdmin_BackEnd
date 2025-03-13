@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from app.api.dependencies import get_current_admin, get_current_user
 
 from ...models.user import (
-    SocialAccounts, SocialLinks, TwitterAccount, UserModel, UserCreate, UserUpdate, UserFilter, 
+    SocialAccounts, SocialLinks, TwitterAccount, UserModel, UserCreate, UserResponse, UserUpdate, UserFilter, 
     UserListResponse, PaginationParams
 )
 from ...services.user_service import UserService
@@ -32,6 +32,13 @@ async def create_user(
     Create a new user
     """
     return await user_service.create_user(user_data)
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
+    """
+    Get the current logged-in user's information
+    """
+    return current_user
 
 @router.get("/{user_id}", response_model=UserModel, dependencies=[Depends(get_current_user)])
 async def get_user(
@@ -143,16 +150,12 @@ async def get_user_discord_guilds(
     current_user: UserModel = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
-    print(current_user)
-    print("Discord Access Token:")
-    print(current_user.get("discord_access_token"))
-    print()
     """
     Fetch user's Discord guilds where they are an admin 
     and indicate which ones have the Hyperblock bot installed
     """
     # Check if Discord token is still valid
-    if not current_user.get("discord_access_token") or not current_user.get("discord_token_expires_at") or current_user.get("discord_token_expires_at") < datetime.now():
+    if not current_user.discord_access_token or not current_user.discord_token_expires_at or current_user.discord_token_expires_at < datetime.now():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Discord token expired. Please log in again.",
@@ -162,13 +165,13 @@ async def get_user_discord_guilds(
     # Create set of guild IDs where the user has HyperBlock bot
     hyperblock_guild_ids = {
         membership.guildId 
-        for membership in current_user.get("serverMemberships", []) 
+        for membership in current_user.serverMemberships 
         if membership.status == "active"
     }
     
     # Fetch guilds from Discord API
     async with httpx.AsyncClient() as client:
-        headers = {"Authorization": f"Bearer {current_user.get('discord_access_token')}"}
+        headers = {"Authorization": f"Bearer {current_user.discord_access_token}"}
         response = await client.get(f"{settings.DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
         
         if response.status_code != 200:

@@ -153,6 +153,22 @@ class UserModel(MongoBaseModel):
             raise ValueError("Status must be one of: active, inactive, banned")
         return value
 
+# User Response Schema (for API output)
+class UserResponse(MongoBaseModel):
+    discordId: str
+    discordUsername: str
+    discordUserAvatarURL: Optional[str] = None
+    walletAddress: Optional[str] = None
+    hyperBlockPoints: Optional[int] = None
+    subscription: Subscription = Field(default_factory=Subscription)
+    userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
+    socials: SocialLinks = Field(default_factory=SocialLinks)
+    socialAccounts: Optional[SocialAccounts] = None
+    mintWallets: Optional[MintWallets] = None
+    serverMemberships: List[ServerMembership] = Field(default_factory=list)
+    purchases: List[Purchase] = Field(default_factory=list)
+    activeBids: List[Bid] = Field(default_factory=list)
+
 # User Create Schema (for API input)
 class UserCreate(BaseModel):
     discordId: str
