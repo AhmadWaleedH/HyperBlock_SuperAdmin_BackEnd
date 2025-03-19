@@ -2,18 +2,18 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional, Dict, Any
 from bson import ObjectId
 
-from ...models.subscription import EnhancedSubscription, SubscriptionTier, StripeSubscriptionDetails
+from ...models.subscription import Subscription, SubscriptionTier, StripeSubscriptionDetails
 
 
 class SubscriptionRepository:
     def __init__(self, database: AsyncIOMotorDatabase):
         self.database = database
-        self.collection = database.users  # We'll store subscriptions in the users collection
+        self.collection = database.users  # storing subscriptions in the users collection
 
     async def update_user_subscription(
         self, 
         user_id: str, 
-        subscription_data: EnhancedSubscription
+        subscription_data: Subscription
     ) -> bool:
         """
         Update a user's subscription information

@@ -6,7 +6,7 @@ from ..db.repositories.guilds import GuildRepository
 from ..models.guild import GuildModel, GuildCreate, GuildUpdate
 from ..models.guild_subscription import (
     GuildSubscriptionTier, 
-    EnhancedGuildSubscription, 
+    GuildSubscription, 
     StripeGuildSubscriptionDetails
 )
 from ..models.user import UserModel
@@ -56,7 +56,6 @@ class GuildSubscriptionService:
         """
         Handle a subscription.created webhook event for a guild
         """
-        print(f"Processing guild subscription created for guild ID: {guild_id}")
         customer_id = subscription_data.get("customer")
         
         # Try to find guild by ID
@@ -71,53 +70,46 @@ class GuildSubscriptionService:
             price_id = subscription_data.get("items", {}).get("data")[0].get("price", {}).get("id")
         
         tier = await GuildStripeService.get_tier_from_price_id(price_id) if price_id else GuildSubscriptionTier.FREE
-        print(f"Determined subscription tier: {tier}")
         
         # Calculate end date based on current period end
         current_period_end = stripe_details.current_period_end
         
-        # Create enhanced subscription object
-        enhanced_subscription = EnhancedGuildSubscription(
+        # Create subscription object
+        enhanced_subscription = GuildSubscription(
             tier=tier,
-            startDate=datetime.now(),
-            endDate=current_period_end,
-            autoRenew=True,
             stripe=stripe_details
         )
-        print(f"Created enhanced guild subscription object with tier: {enhanced_subscription.tier}")
         
         # If guild exists, update its subscription
         if guild:
-            print(f"Updating existing guild {guild.guildId} with new subscription")
             update_data = GuildUpdate(subscription=enhanced_subscription)
             await self.guild_repository.update(str(guild.id), update_data)
             return await self.guild_repository.get_by_id(str(guild.id))
         else:
-            # If guild doesn't exist, create a new one
-            print(f"Guild {guild_id} not found, creating new guild record")
+            """
+                TODO: Get guild details from Discord API
+            """
+            from ...models.guild import BotConfig, PointsSystem, GuildCounter
             
-            # Get basic guild data from Discord if possible
-            # For now, just create with minimal information
             new_guild = GuildCreate(
                 guildId=guild_id,
-                guildName=f"Guild {guild_id}",  # Default name until we get Discord data
-                subscription=enhanced_subscription
+                guildName=f"Guild {guild_id}",
+                subscription=enhanced_subscription,
+                botConfig=BotConfig(),
+                pointsSystem=PointsSystem(),
+                counter=GuildCounter()
             )
             
             created_guild = await self.guild_repository.create(new_guild)
-            print(f"Created new guild record with ID: {created_guild.id}")
             return created_guild
     
     async def handle_guild_subscription_updated(self, subscription_data: Dict[str, Any], guild_id: str) -> Optional[GuildModel]:
         """
         Handle a subscription.updated webhook event for a guild
-        """
-        print(f"Processing guild subscription updated for guild ID: {guild_id}")
-        
+        """        
         # Try to find guild by ID
         guild = await self.guild_repository.get_by_guild_id(guild_id)
         if not guild:
-            print(f"Guild {guild_id} not found, cannot update subscription")
             return None
         
         # Convert Stripe subscription to our format
@@ -133,30 +125,21 @@ class GuildSubscriptionService:
         
         if price_id and current_price_id != price_id:
             tier = await GuildStripeService.get_tier_from_price_id(price_id)
-            print(f"Price changed, updating tier to: {tier}")
             
             # Create new subscription object with updated tier
-            enhanced_subscription = EnhancedGuildSubscription(
+            enhanced_subscription = GuildSubscription(
                 tier=tier,
-                startDate=datetime.now(),
-                endDate=stripe_details.current_period_end,
-                autoRenew=True,
                 stripe=stripe_details
             )
             
             # Update the guild
             update_data = GuildUpdate(subscription=enhanced_subscription)
             await self.guild_repository.update(str(guild.id), update_data)
-        else:
-            # Just update the stripe details
-            print(f"Updating Stripe details only, tier unchanged")
-            
+        else:            
             # Use existing subscription data but update stripe details
             subscription = guild.subscription
             subscription.stripe = stripe_details
             
-            # Update the subscription end date
-            subscription.endDate = stripe_details.current_period_end
             
             # Update the guild
             update_data = GuildUpdate(subscription=subscription)
@@ -168,24 +151,18 @@ class GuildSubscriptionService:
     async def handle_guild_subscription_deleted(self, subscription_data: Dict[str, Any], guild_id: str) -> Optional[GuildModel]:
         """
         Handle a subscription.deleted webhook event for a guild
-        """
-        print(f"Processing guild subscription deleted for guild ID: {guild_id}")
-        
+        """        
         # Try to find guild by ID
         guild = await self.guild_repository.get_by_guild_id(guild_id)
         if not guild:
-            print(f"Guild {guild_id} not found, cannot update subscription")
             return None
         
         # Convert Stripe subscription to our format
         stripe_details = GuildStripeService.convert_stripe_subscription_to_guild_format(subscription_data)
         
         # Downgrade to FREE tier
-        enhanced_subscription = EnhancedGuildSubscription(
+        enhanced_subscription = GuildSubscription(
             tier=GuildSubscriptionTier.FREE,
-            startDate=None,
-            endDate=None,
-            autoRenew=False,
             stripe=stripe_details
         )
         
@@ -203,13 +180,10 @@ class GuildSubscriptionService:
     ) -> GuildModel:
         """
         Cancel a guild's subscription
-        """
-        print(f"Processing cancellation request for guild: {guild_id}")
-        
+        """        
         # Get the guild
         guild = await self.guild_repository.get_by_guild_id(guild_id)
         if not guild:
-            print(f"Guild {guild_id} not found")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Guild with ID {guild_id} not found"
@@ -248,7 +222,6 @@ class GuildSubscriptionService:
         # Get the guild
         guild = await self.guild_repository.get_by_guild_id(guild_id)
         if not guild:
-            print(f"Guild {guild_id} not found")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Guild with ID {guild_id} not found"

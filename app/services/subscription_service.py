@@ -6,7 +6,7 @@ from ..db.repositories.subscriptions import SubscriptionRepository
 from ..db.repositories.users import UserRepository
 from ..models.subscription import (
     SubscriptionTier, 
-    EnhancedSubscription, 
+    Subscription, 
     StripeSubscriptionDetails,
     SubscriptionStatus,
     CheckoutSessionResponse
@@ -86,121 +86,55 @@ class SubscriptionService:
             
         return updated_user
     
-    # async def handle_subscription_created(self, subscription_data: Dict[str, Any]) -> Optional[UserModel]:
-    #     """
-    #     Handle a subscription.created webhook event
-    #     """
-    #     customer_id = subscription_data.get("customer")
-    #     print("customer_id")
-    #     print(customer_id)
-    #     # Find user by Stripe customer ID
-    #     user_data = await self.subscription_repository.find_user_by_stripe_customer_id(customer_id)
-    #     print("user_data")
-    #     print(user_data)
-    #     if not user_data:
-    #         # If no user found, try to check metadata for user_id
-    #         metadata = subscription_data.get("metadata", {})
-    #         user_id = metadata.get("user_id")
-            
-    #         if user_id:
-    #             user_data = await self.user_repository.get_by_id(user_id)
-        
-    #     if not user_data:
-    #         return None  # No matching user found
-    #     print("got here")
-    #     # Convert Stripe subscription to our format
-    #     stripe_details = StripeService.convert_stripe_subscription_to_db_format(subscription_data)
-    #     print("stripe_details")
-    #     print(stripe_details)
-    #     # Get the price ID to determine the subscription tier
-    #     price_id = None
-    #     if subscription_data.get("items", {}).get("data"):
-    #         price_id = subscription_data.get("items", {}).get("data")[0].get("price", {}).get("id")
-        
-    #     tier = StripeService.get_tier_from_price_id(price_id) if price_id else SubscriptionTier.FREE
-        
-    #     # Create enhanced subscription object
-    #     enhanced_subscription = EnhancedSubscription(
-    #         tier=tier,
-    #         stripe=stripe_details
-    #     )
-        
-    #     # Update the user's subscription
-    #     user_id = str(user_data.get("_id")) if user_data.get("_id") else None
-    #     print(user_id)
-    #     if user_id:
-    #         await self.subscription_repository.update_user_subscription(user_id, enhanced_subscription)
-    #         return await self.user_repository.get_by_id(user_id)
-        
-    #     return None
-
-    # Update the subscription_service.py methods with debug statements
 
     async def handle_subscription_created(self, subscription_data: Dict[str, Any]) -> Optional[UserModel]:
         """
         Handle a subscription.created webhook event
         """
         customer_id = subscription_data.get("customer")
-        print(f"Processing subscription created for customer: {customer_id}")
         
         # Find user by Stripe customer ID
         user_data = await self.subscription_repository.find_user_by_stripe_customer_id(customer_id)
         if not user_data:
-            print(f"No user found with Stripe customer ID: {customer_id}")
             # If no user found, try to check metadata for user_id
             metadata = subscription_data.get("metadata", {})
-            print(f"Subscription metadata: {metadata}")
             user_id = metadata.get("user_id")
             
             if user_id:
-                print(f"Found user_id in metadata: {user_id}")
                 user_data = await self.user_repository.get_by_id(user_id)
         
         if not user_data:
-            print("No matching user found, subscription cannot be assigned")
             return None  # No matching user found
         
         # Found a user
         user_id = str(user_data.get("_id")) if user_data.get("_id") else None
-        print(f"Found user with ID: {user_id}")
         
         # Convert Stripe subscription to our format
         stripe_details = StripeService.convert_stripe_subscription_to_db_format(subscription_data)
-        print(f"Converted Stripe subscription details: {stripe_details}")
         
         # Get the price ID to determine the subscription tier
         price_id = None
         if subscription_data.get("items", {}).get("data"):
             price_id = subscription_data.get("items", {}).get("data")[0].get("price", {}).get("id")
-        
-        print(f"Price ID from subscription: {price_id}")
-        
+                
         tier = StripeService.get_tier_from_price_id(price_id) if price_id else SubscriptionTier.FREE
-        print(f"Determined subscription tier: {tier}")
         
-        # Create enhanced subscription object
-        enhanced_subscription = EnhancedSubscription(
+        # Create subscription object
+        enhanced_subscription = Subscription(
             tier=tier,
             stripe=stripe_details
         )
-        print(f"Created enhanced subscription object with tier: {enhanced_subscription.tier}")
         
         # Update the user's subscription
         if user_id:
-            print(f"Updating user {user_id} with new subscription")
             update_success = await self.subscription_repository.update_user_subscription(user_id, enhanced_subscription)
-            print(f"Update success: {update_success}")
             
             updated_user = await self.user_repository.get_by_id(user_id)
             if updated_user:
-                print(f"User fetched after update: {updated_user.discordUsername}")
-                print(f"Updated subscription tier: {updated_user.subscription.tier}")
                 return updated_user
             else:
-                print(f"Failed to fetch user after update")
                 return None
         
-        print("No user_id available for update")
         return None
     
     async def handle_subscription_updated(self, subscription_data: Dict[str, Any]) -> Optional[UserModel]:

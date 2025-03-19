@@ -19,24 +19,19 @@ class StripeGuildSubscriptionDetails(BaseModel):
     cancel_at_period_end: bool = False
     canceled_at: Optional[datetime] = None
     payment_method_id: Optional[str] = None
-    # Store interval information more flexibly
     interval: Optional[str] = None
     interval_count: Optional[int] = None
 
-# Enhanced Guild Subscription Model
-class EnhancedGuildSubscription(BaseModel):
+# Guild Subscription Model
+class GuildSubscription(BaseModel):
     tier: GuildSubscriptionTier = GuildSubscriptionTier.FREE
-    startDate: Optional[datetime] = None
-    endDate: Optional[datetime] = None
-    autoRenew: bool = True
     stripe: Optional[StripeGuildSubscriptionDetails] = None
 
 # Request models
 class GuildSubscriptionCreate(BaseModel):
     guild_id: str
     tier: GuildSubscriptionTier
-    price_id: Optional[str] = None  # Allow specifying a specific price ID
-    # Instead of fixed interval enum, use string and count
+    price_id: Optional[str] = None  # specific price ID
     interval: Optional[str] = None  # e.g., "month", "year"
     interval_count: Optional[int] = None  # e.g., 1, 6, 12
     payment_method_id: Optional[str] = None

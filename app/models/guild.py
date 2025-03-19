@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 from bson import ObjectId
 
-from app.models.guild_subscription import EnhancedGuildSubscription
+from app.models.guild_subscription import GuildSubscription
 
 from .user import PyObjectId, MongoBaseModel
 
@@ -73,12 +73,6 @@ class PointsSystem(BaseModel):
     exchangeRate: Optional[float] = None
     actions: PointsActions = Field(default_factory=PointsActions)
 
-class GuildSubscription(BaseModel):
-    tier: str = "free"
-    startDate: Optional[datetime] = None
-    endDate: Optional[datetime] = None
-    autoRenew: Optional[bool] = None
-
 class AnalyticsMetrics(BaseModel):
     activeUsers: Optional[int] = None
     messageCount: Optional[int] = None
@@ -108,7 +102,7 @@ class GuildModel(MongoBaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
-    subscription: EnhancedGuildSubscription = Field(default_factory=EnhancedGuildSubscription)
+    subscription: GuildSubscription = Field(default_factory=GuildSubscription)
     counter: GuildCounter = Field(default_factory=GuildCounter)
     analytics: GuildAnalytics = Field(default_factory=GuildAnalytics)
     shop: List[PyObjectId] = Field(default_factory=list)
@@ -133,7 +127,7 @@ class GuildCreate(BaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
-    subscription: Optional[EnhancedGuildSubscription] = None
+    subscription: Optional[GuildSubscription] = None
     counter: Optional[GuildCounter] = None
 
 class GuildUpdate(BaseModel):
@@ -147,7 +141,7 @@ class GuildUpdate(BaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
-    subscription: Optional[EnhancedGuildSubscription] = None
+    subscription: Optional[GuildSubscription] = None
     counter: Optional[GuildCounter] = None
     analytics: Optional[GuildAnalytics] = None
 

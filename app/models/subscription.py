@@ -2,7 +2,6 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 from enum import Enum
-from .user import MongoBaseModel, PyObjectId
 
 
 class SubscriptionStatus(str, Enum):
@@ -40,15 +39,15 @@ class SubscriptionPlan(BaseModel):
 
 class SubscriptionTier(str, Enum):
     FREE = "free"
-    SEED = "seed"  
+    # SEED = "seed"  
     INDIVIDUAL = "individual"
-    FLARE = "flare"
-    TITAN = "titan"
+    # FLARE = "flare"
+    # TITAN = "titan"
     HYPERIUM = "hyperium"
 
 
-# Enhanced Subscription Model to work with Stripe
-class EnhancedSubscription(BaseModel):
+# Subscription Model to work with Stripe
+class Subscription(BaseModel):
     tier: SubscriptionTier = SubscriptionTier.FREE
     stripe: Optional[StripeSubscriptionDetails] = None
 

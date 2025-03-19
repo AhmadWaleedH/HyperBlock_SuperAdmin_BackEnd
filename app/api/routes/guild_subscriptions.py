@@ -52,10 +52,12 @@ async def create_guild_checkout_session(
     """
     # Get fresh user data to ensure we have the latest state
     current_user = await user_service.get_user(str(current_user.id))
-    
-    # Check if user has permission to manage the guild
-    # This could be expanded to check if the user is actually an admin of the guild
-    # For now, we'll assume if they know the guild ID, they have permission
+
+    """
+        TODO: Add permission check here (User should be admin of the guild)
+            1. User should have permission to manage the guild
+            2. User should have permission to manage subscriptions
+    """
     
     return await guild_subscription_service.create_guild_checkout_session(
         current_user, 
@@ -80,21 +82,19 @@ async def get_guild_subscription(
     """
     # Check if the guild exists
     guild = await guild_subscription_service.guild_repository.get_by_guild_id(guild_id)
-    print(guild)
     if not guild:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Guild with ID {guild_id} not found"
         )
     
-    # Check if the subscription exists and has the enhanced format
     if not guild.subscription:
         return GuildSubscriptionResponse(
             guild_id=guild_id,
             tier=GuildSubscriptionTier.FREE
         )
     
-    # Handle case with newer EnhancedGuildSubscription
+    # Handle case with newer GuildSubscription format
     if hasattr(guild.subscription, 'stripe'):
         stripe_details = guild.subscription.stripe
         return GuildSubscriptionResponse(
