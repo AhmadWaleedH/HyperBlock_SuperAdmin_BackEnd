@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 from bson import ObjectId
 
+from app.models.guild_subscription import EnhancedGuildSubscription
+
 from .user import PyObjectId, MongoBaseModel
 
 # Role model for adminRoles
@@ -106,7 +108,7 @@ class GuildModel(MongoBaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
-    subscription: GuildSubscription = Field(default_factory=GuildSubscription)
+    subscription: EnhancedGuildSubscription = Field(default_factory=EnhancedGuildSubscription)
     counter: GuildCounter = Field(default_factory=GuildCounter)
     analytics: GuildAnalytics = Field(default_factory=GuildAnalytics)
     shop: List[PyObjectId] = Field(default_factory=list)
@@ -131,7 +133,7 @@ class GuildCreate(BaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
-    subscription: Optional[GuildSubscription] = None
+    subscription: Optional[EnhancedGuildSubscription] = None
     counter: Optional[GuildCounter] = None
 
 class GuildUpdate(BaseModel):
@@ -145,7 +147,7 @@ class GuildUpdate(BaseModel):
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
-    subscription: Optional[GuildSubscription] = None
+    subscription: Optional[EnhancedGuildSubscription] = None
     counter: Optional[GuildCounter] = None
     analytics: Optional[GuildAnalytics] = None
 

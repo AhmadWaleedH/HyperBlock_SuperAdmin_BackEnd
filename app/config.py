@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     TWITTER_REDIRECT_URI: str = Field(default="/connect/twitter/callback")
     TWITTER_AUTH_URL: str = Field(default="https://twitter.com/i/oauth2/authorize")
     TWITTER_TOKEN_URL: str = Field(default="https://api.twitter.com/2/oauth2/token")
+
+    # Stripe settings
+    STRIPE_API_KEY: str = os.getenv("STRIPE_API_KEY", "")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    STRIPE_PUBLIC_KEY: str = os.getenv("STRIPE_PUBLIC_KEY", "")
         
     class Config:
         env_file = ".env"
@@ -56,4 +61,7 @@ settings = Settings(
     TWITTER_REDIRECT_URI=os.getenv("TWITTER_REDIRECT_URI", "/connect/twitter/callback"),
     TWITTER_AUTH_URL=os.getenv("TWITTER_AUTH_URL", "https://twitter.com/i/oauth2/authorize"),
     TWITTER_TOKEN_URL=os.getenv("TWITTER_TOKEN_URL", "https://api.twitter.com/2/oauth2/token"),
+    STRIPE_API_KEY=os.getenv("STRIPE_API_KEY", ""),
+    STRIPE_WEBHOOK_SECRET=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
+    STRIPE_PUBLIC_KEY=os.getenv("STRIPE_PUBLIC_KEY", "")
 )

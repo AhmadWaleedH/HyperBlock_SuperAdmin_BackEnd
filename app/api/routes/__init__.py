@@ -7,6 +7,8 @@ from .raffles import router as raffles_router
 from .auctions import router as auctions_router
 from .shop import router as shop_router
 from .embed_messages import router as embed_messages_router
+from .subscriptions import router as subscriptions_router
+from .guild_subscriptions import router as guild_subscriptions_router
 
 router = APIRouter()
 
@@ -18,3 +20,5 @@ router.include_router(raffles_router, prefix="/raffles", tags=["raffles"])
 router.include_router(auctions_router, prefix="/auctions", tags=["auctions"])
 router.include_router(shop_router, prefix="/shop", tags=["shop"])
 router.include_router(embed_messages_router, prefix="/embeds", tags=["embeds"])
+router.include_router(subscriptions_router, prefix="/subscriptions", tags=["Subscriptions"])
+router.include_router(guild_subscriptions_router, prefix="/guild-subscriptions", tags=["Guild Subscriptions"])

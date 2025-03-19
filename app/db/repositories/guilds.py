@@ -44,6 +44,35 @@ class GuildRepository:
         if guild:
             return GuildModel(**guild)
         return None
+    
+    async def find_guild_by_stripe_customer_id(self, customer_id: str) -> Optional[GuildModel]:
+        """
+        Find a guild by its Stripe customer ID
+        """
+        print(f"Looking for guild with Stripe customer ID: {customer_id}")
+        
+        if not customer_id:
+            print("No customer ID provided")
+            return None
+            
+        try:
+            # First try to find in subscription.stripe.stripe_customer_id (new format)
+            guild = await self.collection.find_one({
+                "subscription.stripe.stripe_customer_id": customer_id
+            })
+            
+            if guild:
+                print(f"Found guild with ID: {guild.get('_id')}")
+                return GuildModel(**guild)
+                
+            # If not found, check for legacy format or custom fields
+            # Add any other fields where customer ID might be stored
+            
+            print(f"No guild found with Stripe customer ID: {customer_id}")
+            return None
+        except Exception as e:
+            print(f"Error finding guild by Stripe customer ID: {str(e)}")
+            return None
 
     async def update(self, guild_id: str, guild_update: GuildUpdate) -> Optional[GuildModel]:
         """

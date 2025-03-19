@@ -44,6 +44,7 @@ class MongoBaseModel(BaseModel):
         "arbitrary_types_allowed": True,
         "json_encoders": {ObjectId: str}
     }
+from .subscription import EnhancedSubscription
 
 # Subscription Schema
 class Subscription(BaseModel):
@@ -94,7 +95,7 @@ class ServerMembership(BaseModel):
     guildId: str
     guildName: str
     guildIcon: Optional[str] = None
-    subscription: Subscription = Field(default_factory=Subscription)
+    subscription: EnhancedSubscription = Field(default_factory=EnhancedSubscription)
     status: str = "active"
     joinedAt: Optional[datetime] = None
     points: Optional[int] = None
@@ -132,7 +133,7 @@ class UserModel(MongoBaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
-    subscription: Subscription = Field(default_factory=Subscription)
+    subscription: EnhancedSubscription = Field(default_factory=EnhancedSubscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
     socialAccounts: Optional[SocialAccounts] = None
@@ -160,7 +161,7 @@ class UserResponse(MongoBaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
-    subscription: Subscription = Field(default_factory=Subscription)
+    subscription: EnhancedSubscription = Field(default_factory=EnhancedSubscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
     socialAccounts: Optional[SocialAccounts] = None
@@ -176,7 +177,7 @@ class UserCreate(BaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = 0
-    subscription: Optional[Subscription] = None
+    subscription: Optional[EnhancedSubscription] = None
     userGlobalStatus: str = "active"
     socials: Optional[SocialLinks] = None
     discord_access_token: Optional[str] = None
@@ -189,7 +190,7 @@ class UserUpdate(BaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
-    subscription: Optional[Subscription] = None
+    subscription: Optional[EnhancedSubscription] = None
     userGlobalStatus: Optional[str] = None
     socials: Optional[SocialLinks] = None
     socialAccounts: Optional[SocialAccounts] = None
