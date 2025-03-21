@@ -130,6 +130,7 @@ class UserModel(MongoBaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
+    cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
@@ -158,6 +159,7 @@ class UserResponse(MongoBaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
+    cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
@@ -186,6 +188,7 @@ class UserUpdate(BaseModel):
     discordUsername: Optional[str] = None
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
+    cardImageUrl: Optional[str] = None
     hyperBlockPoints: Optional[int] = None
     subscription: Optional[Subscription] = None
     userGlobalStatus: Optional[str] = None

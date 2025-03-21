@@ -94,6 +94,7 @@ class GuildModel(MongoBaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
@@ -119,6 +120,7 @@ class GuildCreate(BaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
@@ -133,6 +135,7 @@ class GuildCreate(BaseModel):
 class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None

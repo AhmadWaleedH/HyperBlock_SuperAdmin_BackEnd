@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple, Dict, Any
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from datetime import datetime
 
 from ..db.repositories.users import UserRepository
@@ -106,3 +106,33 @@ class UserService:
         """
         users, total = await self.user_repository.search(query, pagination)
         return UserListResponse(total=total, users=users)
+    
+    async def upload_card_image(self, user_id: str, file: UploadFile) -> UserModel:
+        """
+        Upload a card image for a user and update their profile
+        """
+        # Check if user exists
+        existing_user = await self.user_repository.get_by_id(user_id)
+        if not existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        
+        # Upload file to S3
+        from ..services.s3_service import S3Service
+        s3_service = S3Service()
+        
+        # If user already has a card image, delete it first
+        if existing_user.cardImageUrl:
+            await s3_service.delete_file(existing_user.cardImageUrl)
+        
+        # Upload new image
+        card_image_url = await s3_service.upload_file(
+            file, 
+            folder=f"user-cards/{user_id}" # remove /{user_id} to store all user cards in the same folder
+        )
+        
+        # Update user with new card image URL
+        user_update = UserUpdate(cardImageUrl=card_image_url, updatedAt=datetime.now())
+        return await self.user_repository.update(user_id, user_update)

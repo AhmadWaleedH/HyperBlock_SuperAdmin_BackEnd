@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, File, Query, Path, HTTPException, UploadFile, status
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -6,11 +6,11 @@ from ...models.guild import (
     GuildModel, GuildCreate, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
-from ...models.user import PaginationParams
+from ...models.user import PaginationParams, UserModel
 from ...services.guild_service import GuildService
 from ...db.repositories.guilds import GuildRepository
 from ...db.database import get_database
-from ..dependencies import get_current_admin
+from ..dependencies import get_current_admin, get_current_user
 
 router = APIRouter()
 
@@ -124,3 +124,67 @@ async def get_guild_analytics(
     Get analytics summary for all guilds
     """
     return await guild_service.get_analytics()
+
+
+# --------------------------------------------------------------------------------
+# Endpoint for uploading guild card images
+# --------------------------------------------------------------------------------
+async def get_guild_service(database = Depends(get_database)) -> GuildService:
+    guild_repository = GuildRepository(database)
+    return GuildService(guild_repository)
+
+# Add the new endpoint for uploading guild card images
+@router.post("/{guild_id}/card-image", response_model=GuildModel)
+async def upload_guild_card_image(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    file: UploadFile = File(...),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Upload a card image for a guild
+    """
+    # Get the guild to verify ownership/admin rights
+    guild = await guild_service.get_guild(guild_id)
+    
+    # Check if current user is the guild owner or an admin
+    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_admin = any(
+        membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
+        for membership in current_user.serverMemberships
+    )
+    is_system_admin = current_user.userGlobalStatus == "admin"
+    
+    if not (is_guild_owner or is_guild_admin or is_system_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to upload card image for this guild"
+        )
+    
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+    
+    # Max file size (2MB)
+    max_size = 2 * 1024 * 1024
+    file_size = 0
+    
+    # Calculate file size
+    chunk = await file.read(1024)
+    while chunk:
+        file_size += len(chunk)
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File too large. Maximum size is 2MB"
+            )
+        chunk = await file.read(1024)
+    
+    # Reset file position
+    await file.seek(0)
+    
+    # Upload guild card image
+    return await guild_service.upload_guild_card_image(guild_id, file)

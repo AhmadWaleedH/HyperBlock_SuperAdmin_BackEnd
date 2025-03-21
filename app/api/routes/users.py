@@ -3,7 +3,7 @@ import hashlib
 import secrets
 import string
 from urllib.parse import urlencode
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Query, Path, HTTPException, Request, UploadFile, status
 from typing import Optional, List
 from datetime import datetime, timedelta
 
@@ -420,3 +420,51 @@ async def disconnect_twitter_account(
     await user_service.update_user(str(current_user.id), update_data)
     
     return TwitterAccountResponse(connected=False)
+
+# ------------------------------------------------------------------------------------------
+# Card Image Upload
+# ------------------------------------------------------------------------------------------
+@router.post("/{user_id}/card-image", response_model=UserModel)
+async def upload_card_image(
+    user_id: str = Path(..., title="The ID of the user"),
+    file: UploadFile = File(...),
+    user_service: UserService = Depends(get_user_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Upload a card image for a user
+    """
+    # Check if current user matches user_id
+    if str(current_user.id) != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to upload card image for this user"
+        )
+    
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+    
+    # Max file size (5MB)
+    max_size = 5 * 1024 * 1024
+    file_size = 0
+    
+    # Calculate file size
+    chunk = await file.read(1024)
+    while chunk:
+        file_size += len(chunk)
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File too large. Maximum size is 5MB"
+            )
+        chunk = await file.read(1024)
+    
+    # Reset file position
+    await file.seek(0)
+    
+    # Upload card image
+    return await user_service.upload_card_image(user_id, file)

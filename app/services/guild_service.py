@@ -1,6 +1,8 @@
 from typing import List, Optional, Tuple, Dict, Any
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from datetime import datetime
+
+from app.services.s3_service import S3Service
 
 from ..db.repositories.guilds import GuildRepository
 from ..models.guild import GuildModel, GuildCreate, GuildUpdate, GuildFilter, GuildListResponse
@@ -113,3 +115,32 @@ class GuildService:
         Get guild analytics
         """
         return await self.guild_repository.get_guild_analytics()
+    
+    async def upload_guild_card_image(self, guild_id: str, file: UploadFile) -> GuildModel:
+        """
+        Upload a card image for a guild and update its profile
+        """
+        # Check if guild exists
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        if not existing_guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        # Upload file to S3
+        s3_service = S3Service()
+        
+        # If guild already has a card image, delete it first
+        if existing_guild.guildCardImageURL:
+            await s3_service.delete_file(existing_guild.guildCardImageURL)
+        
+        # Upload new image
+        card_image_url = await s3_service.upload_file(
+            file, 
+            folder=f"guild-cards/{guild_id}"
+        )
+        
+        # Update guild with new card image URL
+        guild_update = GuildUpdate(guildCardImageURL=card_image_url, updatedAt=datetime.now())
+        return await self.guild_repository.update(guild_id, guild_update)
