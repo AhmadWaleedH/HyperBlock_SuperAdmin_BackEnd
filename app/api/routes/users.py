@@ -3,8 +3,8 @@ import hashlib
 import secrets
 import string
 from urllib.parse import urlencode
-from fastapi import APIRouter, Depends, File, Query, Path, HTTPException, Request, UploadFile, status
-from typing import Optional, List
+from fastapi import APIRouter, Body, Depends, File, Query, Path, HTTPException, Request, UploadFile, status
+from typing import Any, Dict, Optional, List
 from datetime import datetime, timedelta
 
 from app.api.dependencies import get_current_admin, get_current_user
@@ -129,7 +129,7 @@ async def search_users(
 # ------------------------------------------------------------------------------------------
 # Discord Guilds
 # ------------------------------------------------------------------------------------------
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 from ...config import settings
 
@@ -468,3 +468,108 @@ async def upload_card_image(
     
     # Upload card image
     return await user_service.upload_card_image(user_id, file)
+
+
+# ------------------------------------------------------------------------------------------
+# Blockchain Transaction Lookup
+# ------------------------------------------------------------------------------------------
+
+# Model for the request
+class TransactionRequest(BaseModel):
+    chain: str = Field(..., description="Blockchain network (bsc, ethereum, polygon, solana, tron)")
+    txHash: str = Field(..., description="Transaction hash to lookup")
+
+# Model for the response
+class TransactionResponse(BaseModel):
+    data: Dict[str, Any]
+
+# RPC endpoints
+RPC_ENDPOINTS = {
+    "bsc": "https://bsc-dataseed.binance.org/",
+    "ethereum": "https://eth.llamarpc.com",
+    "polygon": "https://polygon-rpc.com/",
+    "solana": "https://api.mainnet-beta.solana.com",
+    "tron": "https://api.trongrid.io",
+    "tron_alt": "https://apilist.tronscan.org"
+}
+
+@router.post("/get-transaction", response_model=TransactionResponse)
+async def get_transaction(request: TransactionRequest = Body(...)):
+    """
+    Fetch transaction details from various blockchains
+    """
+    chain = request.chain.lower()
+    tx_hash = request.txHash
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            if chain in ["bsc", "ethereum", "polygon"]:
+                # EVM-compatible chains
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "eth_getTransactionByHash",
+                    "params": [tx_hash]
+                }
+                response = await client.post(RPC_ENDPOINTS[chain], json=payload)
+                return {"data": response.json()}
+                
+            elif chain == "solana":
+                # Solana
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "getTransaction",
+                    "params": [tx_hash, "json"]
+                }
+                response = await client.post(RPC_ENDPOINTS[chain], json=payload)
+                return {"data": response.json()}
+                
+            elif chain == "tron":
+                # Tron - using the correct API endpoint
+                try:                        
+                    response = await client.post(f"{RPC_ENDPOINTS[chain]}/wallet/gettransactionbyid", json={
+                        "value": tx_hash
+                    })
+                    if response.status_code == 200:
+                        return {"data": response.json()}
+                        
+                    response = await client.get(f"{RPC_ENDPOINTS[chain]}/v1/transactions/{tx_hash}")
+                    if response.status_code == 200:
+                        return {"data": response.json()}
+                    
+                    # If both fail, try the Tronscan API
+                    response = await client.get(f"https://apilist.tronscan.org/api/transaction-info?hash={tx_hash}")
+                    print("using tronscan")
+                    if response.status_code == 200:
+                        return {"data": response.json()}
+                        
+                    # If all attempts fail
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Transaction not found on Tron network: {tx_hash}"
+                    )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Error querying Tron transaction: {str(e)}"
+                    )
+                
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Unsupported blockchain"
+                )
+                
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to blockchain RPC: {str(e)}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"An error occurred: {str(e)}"
+            )
+        
+        
