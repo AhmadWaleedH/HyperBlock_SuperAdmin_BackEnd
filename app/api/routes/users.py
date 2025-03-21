@@ -484,13 +484,45 @@ class TransactionResponse(BaseModel):
     data: Dict[str, Any]
 
 # RPC endpoints
+# Updated RPC endpoints with fallbacks
 RPC_ENDPOINTS = {
-    "bsc": "https://bsc-dataseed.binance.org/",
-    "ethereum": "https://eth.llamarpc.com",
-    "polygon": "https://polygon-rpc.com/",
-    "solana": "https://api.mainnet-beta.solana.com",
-    "tron": "https://api.trongrid.io",
-    "tron_alt": "https://apilist.tronscan.org"
+    # Ethereum nodes
+    "ethereum": [
+        "https://eth.llamarpc.com",
+        "https://eth.drpc.org",
+        "https://ethereum.publicnode.com"
+    ],
+    # BSC nodes
+    "bsc": [
+        "https://bsc-dataseed.binance.org/",
+        "https://bsc-dataseed1.defibit.io/",
+        "https://bsc-dataseed1.ninicoin.io/"
+    ],
+    # Polygon nodes
+    "polygon": [
+        "https://polygon-rpc.com/",
+        "https://polygon.llamarpc.com",
+        "https://polygon-mainnet.public.blastapi.io"
+    ],
+    # Solana nodes
+    "solana": [
+        "https://api.mainnet-beta.solana.com",
+        "https://solana-mainnet.g.alchemy.com/v2/demo",
+        "https://rpc.ankr.com/solana"
+    ],
+    # Tron endpoints
+    "tron": [
+        "https://api.trongrid.io",
+        "https://apilist.tronscan.org"
+    ],
+    # Block explorers for fallback
+    "explorers": {
+        "ethereum": "https://api.etherscan.io/api",
+        "bsc": "https://api.bscscan.com/api",
+        "polygon": "https://api.polygonscan.com/api",
+        "solana": "https://public-api.solscan.io/transaction",
+        "tron": "https://apilist.tronscan.org/api/transaction-info"
+    }
 }
 
 @router.post("/get-transaction", response_model=TransactionResponse)
@@ -501,64 +533,115 @@ async def get_transaction(request: TransactionRequest = Body(...)):
     chain = request.chain.lower()
     tx_hash = request.txHash
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            if chain in ["bsc", "ethereum", "polygon"]:
-                # EVM-compatible chains
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "eth_getTransactionByHash",
-                    "params": [tx_hash]
-                }
-                response = await client.post(RPC_ENDPOINTS[chain], json=payload)
-                return {"data": response.json()}
+            # EVM-compatible chains (Ethereum, BSC, Polygon)
+            if chain in ["ethereum", "bsc", "polygon"]:
+                # Try each RPC endpoint until one works
+                for endpoint in RPC_ENDPOINTS[chain]:
+                    try:
+                        payload = {
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "eth_getTransactionByHash",
+                            "params": [tx_hash]
+                        }
+                        response = await client.post(endpoint, json=payload, timeout=5.0)
+                        if response.status_code == 200:
+                            result = response.json()
+                            # Check if we got a valid result
+                            if "result" in result and result["result"]:
+                                return {"data": result}
+                    except (httpx.RequestError, httpx.TimeoutException):
+                        continue
                 
+                # If all RPC endpoints fail, try the explorer API as fallback
+                try:
+                    explorer_url = RPC_ENDPOINTS["explorers"][chain]
+                    response = await client.get(f"{explorer_url}?module=proxy&action=eth_getTransactionByHash&txhash={tx_hash}", timeout=5.0)
+                    if response.status_code == 200:
+                        result = response.json()
+                        if "result" in result and result["result"]:
+                            return {"data": result}
+                except Exception:
+                    pass
+                
+                # If everything fails
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Transaction not found on {chain} network: {tx_hash}"
+                )
+                
+            # Solana chain
             elif chain == "solana":
-                # Solana
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getTransaction",
-                    "params": [tx_hash, "json"]
-                }
-                response = await client.post(RPC_ENDPOINTS[chain], json=payload)
-                return {"data": response.json()}
+                # Try each Solana RPC endpoint
+                for endpoint in RPC_ENDPOINTS["solana"]:
+                    try:
+                        payload = {
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "getTransaction",
+                            "params": [tx_hash, "json"]
+                        }
+                        response = await client.post(endpoint, json=payload, timeout=5.0)
+                        if response.status_code == 200:
+                            result = response.json()
+                            if "result" in result and result["result"]:
+                                return {"data": result}
+                    except (httpx.RequestError, httpx.TimeoutException):
+                        continue
                 
+                # Try Solscan API as fallback
+                try:
+                    response = await client.get(f"{RPC_ENDPOINTS['explorers']['solana']}/{tx_hash}", timeout=5.0)
+                    if response.status_code == 200:
+                        return {"data": response.json()}
+                except Exception:
+                    pass
+                
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Transaction not found on Solana network: {tx_hash}"
+                )
+                
+            # Tron chain
             elif chain == "tron":
-                # Tron - using the correct API endpoint
-                try:                        
-                    response = await client.post(f"{RPC_ENDPOINTS[chain]}/wallet/gettransactionbyid", json={
+                # Try Tron Node API first
+                try:
+                    response = await client.post(f"{RPC_ENDPOINTS['tron'][0]}/wallet/gettransactionbyid", json={
                         "value": tx_hash
-                    })
-                    if response.status_code == 200:
-                        return {"data": response.json()}
-                        
-                    response = await client.get(f"{RPC_ENDPOINTS[chain]}/v1/transactions/{tx_hash}")
-                    if response.status_code == 200:
-                        return {"data": response.json()}
+                    }, timeout=5.0)
                     
-                    # If both fail, try the Tronscan API
-                    response = await client.get(f"https://apilist.tronscan.org/api/transaction-info?hash={tx_hash}")
-                    print("using tronscan")
+                    if response.status_code == 200 and response.json():
+                        return {"data": response.json()}
+                except Exception:
+                    pass
+                
+                # Then try the v1 API format
+                try:
+                    response = await client.get(f"{RPC_ENDPOINTS['tron'][0]}/v1/transactions/{tx_hash}", timeout=5.0)
                     if response.status_code == 200:
                         return {"data": response.json()}
-                        
-                    # If all attempts fail
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Transaction not found on Tron network: {tx_hash}"
-                    )
-                except Exception as e:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Error querying Tron transaction: {str(e)}"
-                    )
+                except Exception:
+                    pass
+                
+                # Finally try Tronscan API
+                try:
+                    response = await client.get(f"{RPC_ENDPOINTS['tron'][1]}/api/transaction-info?hash={tx_hash}", timeout=5.0)
+                    if response.status_code == 200:
+                        return {"data": response.json()}
+                except Exception:
+                    pass
+                
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Transaction not found on Tron network: {tx_hash}"
+                )
                 
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Unsupported blockchain"
+                    detail=f"Unsupported blockchain: {chain}"
                 )
                 
         except httpx.RequestError as e:
@@ -570,6 +653,4 @@ async def get_transaction(request: TransactionRequest = Body(...)):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"An error occurred: {str(e)}"
-            )
-        
-        
+            )       
