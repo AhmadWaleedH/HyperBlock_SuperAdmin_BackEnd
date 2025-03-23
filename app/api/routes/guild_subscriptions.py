@@ -105,16 +105,13 @@ async def get_guild_subscription(
             cancel_at_period_end=stripe_details.cancel_at_period_end if stripe_details else None,
             interval=stripe_details.interval if stripe_details else None,
             interval_count=stripe_details.interval_count if stripe_details else None,
-            auto_renew=guild.subscription.autoRenew,
             price_id=stripe_details.stripe_price_id if stripe_details else None
         )
     
     # Handle case with legacy GuildSubscription format
     return GuildSubscriptionResponse(
         guild_id=guild_id,
-        tier=GuildSubscriptionTier(guild.subscription.tier),
-        current_period_end=guild.subscription.endDate,
-        auto_renew=guild.subscription.autoRenew if hasattr(guild.subscription, 'autoRenew') else None
+        tier=GuildSubscriptionTier(guild.subscription.tier)
     )
 
 
@@ -142,7 +139,6 @@ async def cancel_guild_subscription(
         cancel_at_period_end=stripe_details.cancel_at_period_end if stripe_details else None,
         interval=stripe_details.interval if stripe_details else None,
         interval_count=stripe_details.interval_count if stripe_details else None,
-        auto_renew=guild.subscription.autoRenew,
         price_id=stripe_details.stripe_price_id if stripe_details else None
     )
 
