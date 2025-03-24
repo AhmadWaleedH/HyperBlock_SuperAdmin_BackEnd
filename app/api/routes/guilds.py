@@ -145,7 +145,10 @@ async def upload_guild_card_image(
     Upload a card image for a guild
     """
     # Get the guild to verify ownership/admin rights
-    guild = await guild_service.get_guild(guild_id)
+    try:
+        guild = await guild_service.get_guild_by_discord_id(guild_id)
+    except Exception:
+        guild = await guild_service.get_guild(guild_id)
     
     # Check if current user is the guild owner or an admin
     is_guild_owner = guild.ownerDiscordId == current_user.discordId

@@ -121,7 +121,9 @@ class GuildService:
         Upload a card image for a guild and update its profile
         """
         # Check if guild exists
-        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        existing_guild = await self.guild_repository.get_by_guild_id(guild_id)
+        if not existing_guild:
+            existing_guild = await self.guild_repository.get_by_id(guild_id)
         if not existing_guild:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -140,7 +142,8 @@ class GuildService:
             file, 
             folder=f"guild-cards/{guild_id}"
         )
+        print("Card image URL:", card_image_url)
         
         # Update guild with new card image URL
         guild_update = GuildUpdate(guildCardImageURL=card_image_url, updatedAt=datetime.now())
-        return await self.guild_repository.update(guild_id, guild_update)
+        return await self.guild_repository.update(existing_guild.id, guild_update)
