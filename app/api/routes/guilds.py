@@ -144,6 +144,14 @@ async def upload_guild_card_image(
     """
     Upload a card image for a guild
     """
+
+    # Check for empty file uploads
+    if file is None or not hasattr(file, 'content_type') or file.filename == '' or file.size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file provided or file is empty"
+        )
+    
     # Get the guild to verify ownership/admin rights
     try:
         guild = await guild_service.get_guild_by_discord_id(guild_id)
