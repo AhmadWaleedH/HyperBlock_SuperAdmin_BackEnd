@@ -397,16 +397,20 @@ async def handle_stripe_webhook(
                         if interval_count and isinstance(interval_count, str) and interval_count.isdigit():
                             interval_count = int(interval_count)
                         
-                        # Create more complete stripe details
-                        stripe_details = StripeGuildSubscriptionDetails(
-                            stripe_customer_id=customer_id,
-                            stripe_subscription_id=subscription_id,
-                            stripe_price_id=price_id,
-                            status="active",
-                            current_period_start=datetime.now(),
-                            interval=interval,
-                            interval_count=interval_count
-                        )
+                        # Create complete stripe details
+                        if subscription_id:
+                            try:
+                                subscription_data = stripe.Subscription.retrieve(subscription_id)
+                                stripe_details = GuildStripeService.convert_stripe_subscription_to_guild_format(subscription_data)
+                            except Exception as e:
+                                print(f"Error retrieving subscription: {e}")
+                                stripe_details = StripeGuildSubscriptionDetails(
+                                    stripe_customer_id=customer_id,
+                                    stripe_subscription_id=subscription_id,
+                                    stripe_price_id=price_id,
+                                    status="active",
+                                    current_period_start=datetime.now()
+                                )
                         
                         # Create subscription
                         if hasattr(guild.subscription, 'tier'):
