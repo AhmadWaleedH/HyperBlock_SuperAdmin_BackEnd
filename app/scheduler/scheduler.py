@@ -51,13 +51,13 @@ class Scheduler:
             #     replace_existing=True
             # )
 
-            self.scheduler.add_job(
-                update_guild_analytics,
-                'interval',
-                minutes=2,
-                id='update_guild_analytics',
-                replace_existing=True
-            )
+            # self.scheduler.add_job(
+            #     update_guild_analytics,
+            #     'interval',
+            #     minutes=2,
+            #     id='update_guild_analytics',
+            #     replace_existing=True
+            # )
             
             # Start the scheduler
             self.scheduler.start()
