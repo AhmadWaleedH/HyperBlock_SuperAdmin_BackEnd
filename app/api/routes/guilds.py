@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from ...models.guild import (
-    GuildModel, GuildCreate, GuildUpdate, GuildFilter, 
+    GuildModel, GuildCreate, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
 from ...models.user import PaginationParams, UserModel
@@ -125,6 +125,61 @@ async def get_guild_analytics(
     """
     return await guild_service.get_analytics()
 
+@router.get("/{guild_id}/top-users", response_model=GuildTopUsersResponse)
+async def get_guild_top_users(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    limit: int = Query(10, ge=1, le=100, description="Number of top users to return"),
+    guild_service: GuildService = Depends(get_guild_service)
+):
+    """
+    Get top users of a guild ordered by points in descending order
+    """
+    try:
+        # Check if the guild exists first
+        await guild_service.get_guild_by_discord_id(guild_id)
+    except HTTPException:
+        try:
+            # Try with MongoDB ID if Discord ID lookup fails
+            await guild_service.get_guild(guild_id)
+        except HTTPException as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+    
+    # Get top users for the guild
+    return await guild_service.get_guild_top_users(guild_id, limit)
+
+@router.get("/{guild_id}/team", response_model=GuildTeamResponse)
+async def get_guild_team(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of team members to return"),
+    guild_service: GuildService = Depends(get_guild_service)
+):
+    """
+    Get the admin/owner team members of a guild
+    
+    - **guild_id**: ID of the guild (Discord guild ID or MongoDB ID)
+    - **limit**: Maximum number of team members to return (default: 10, max: 100)
+    """
+    try:
+        # Check if the guild exists first
+        try:
+            await guild_service.get_guild_by_discord_id(guild_id)
+        except HTTPException:
+            # Try with MongoDB ID if Discord ID lookup fails
+            await guild_service.get_guild(guild_id)
+        
+        # Get team members for the guild
+        return await guild_service.get_guild_team(guild_id, limit)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error in get_guild_team endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving guild team: {str(e)}"
+        )
 
 # --------------------------------------------------------------------------------
 # Endpoint for uploading guild card images

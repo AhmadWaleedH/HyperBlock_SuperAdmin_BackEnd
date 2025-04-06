@@ -164,3 +164,25 @@ class GuildFilter(BaseModel):
 class GuildListResponse(BaseModel):
     total: int
     guilds: List[GuildModel]
+
+class GuildUserPointsResponse(BaseModel):
+    discordId: str
+    discordUsername: str
+    guildId: str
+    points: int
+
+class GuildTopUsersResponse(BaseModel):
+    total: int
+    users: List[GuildUserPointsResponse]
+
+class GuildTeamMemberResponse(BaseModel):
+    discordId: str
+    discordUsername: str
+    discordUserAvatarURL: Optional[str] = None
+    guildId: str
+    userType: str  # Will be "admin" or "owner"
+    joinedAt: Optional[datetime] = None
+
+class GuildTeamResponse(BaseModel):
+    total: int
+    team: List[GuildTeamMemberResponse]

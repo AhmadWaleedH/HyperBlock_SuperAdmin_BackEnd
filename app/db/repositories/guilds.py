@@ -267,3 +267,133 @@ class GuildRepository:
             "total_guilds": await self.collection.count_documents({}),
             "active_bots": await self.collection.count_documents({"botConfig.enabled": True})
         }
+    
+    async def get_guild_top_users(self, guild_id: str, limit: int) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Get top users of a guild ordered by points in descending order
+        
+        This method queries the users collection to find all users who are members of the specified guild,
+        and returns a simplified data structure with just the user info and points.
+        """
+        # Connect to the users collection
+        users_collection = self.database.users
+        
+        # Build a simplified aggregation pipeline that only extracts what we need
+        pipeline = [
+            # Match users who are members of this guild
+            {
+                "$match": {
+                    "serverMemberships.guildId": guild_id
+                }
+            },
+            # Unwind the serverMemberships array to work with individual memberships
+            {
+                "$unwind": "$serverMemberships"
+            },
+            # Match only the memberships for this guild and with active status
+            {
+                "$match": {
+                    "serverMemberships.guildId": guild_id,
+                    "serverMemberships.status": "active"
+                }
+            },
+            # Project only the fields we need for the response
+            {
+                "$project": {
+                    "_id": 1,
+                    "discordId": 1,
+                    "discordUsername": 1,
+                    "guildId": "$serverMemberships.guildId",
+                    "points": { "$ifNull": ["$serverMemberships.points", 0] }
+                }
+            },
+            # Sort by points in descending order
+            {
+                "$sort": {
+                    "points": -1
+                }
+            },
+            # Limit to the requested number of users
+            {
+                "$limit": limit
+            }
+        ]
+        
+        # Execute the aggregation
+        cursor = users_collection.aggregate(pipeline)
+        
+        # Convert cursor to list
+        users_data = await cursor.to_list(length=limit)
+        
+        # Count total matching users for this guild (for pagination info)
+        total_count = await users_collection.count_documents({
+            "serverMemberships.guildId": guild_id,
+            "serverMemberships.status": "active"
+        })
+        
+        return users_data, min(total_count, limit)
+    
+    async def get_guild_team(self, guild_id: str, limit: int = 10) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Get the admin/owner team members of a guild
+        
+        This method queries the users collection to find all users who are admins or owners
+        of the specified guild.
+        """
+        # Connect to the users collection
+        users_collection = self.database.users
+        
+        # Build a pipeline to find admin/owner team members
+        pipeline = [
+            # Match users who are members of this guild
+            {
+                "$match": {
+                    "serverMemberships.guildId": guild_id
+                }
+            },
+            # Unwind the serverMemberships array to work with individual memberships
+            {
+                "$unwind": "$serverMemberships"
+            },
+            # Match only the memberships for this guild with admin or owner user type
+            {
+                "$match": {
+                    "serverMemberships.guildId": guild_id,
+                    "serverMemberships.status": "active",
+                    "serverMemberships.userType": {"$in": ["admin", "owner"]}
+                }
+            },
+            # Project only the fields we need for the response
+            {
+                "$project": {
+                    "_id": 1,
+                    "discordId": 1,
+                    "discordUsername": 1,
+                    "discordUserAvatarURL": 1,
+                    "guildId": "$serverMemberships.guildId",
+                    "userType": "$serverMemberships.userType",
+                    "joinedAt": "$serverMemberships.joinedAt"
+                }
+            },
+            # Sort by userType (owner first, then admin) and then by username
+            {
+                "$sort": {
+                    "userType": -1,  # -1 for descending: "owner" comes before "admin"
+                    "discordUsername": 1
+                }
+            }
+        ]
+
+        # Add limit to the pipeline
+        pipeline.append({"$limit": limit})
+        
+        # Execute the aggregation
+        cursor = users_collection.aggregate(pipeline)
+        
+        # Convert cursor to list
+        team_data = await cursor.to_list(length=limit)
+        
+        # Count total team members for this guild
+        total_count = len(team_data)
+        
+        return team_data, total_count

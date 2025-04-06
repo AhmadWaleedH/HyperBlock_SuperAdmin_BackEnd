@@ -98,6 +98,74 @@ class GuildService:
         """
         guilds, total = await self.guild_repository.get_all_with_filters(filter_params, pagination)
         return GuildListResponse(total=total, guilds=guilds)
+    
+    async def get_guild_top_users(
+        self, 
+        guild_id: str,
+        limit: int
+    ) -> Dict[str, Any]:
+        """
+        Get top users of a guild ordered by points in descending order
+        """
+        # Delegate to the repository
+        try:
+            # Delegate to the repository
+            users_data, total = await self.guild_repository.get_guild_top_users(guild_id, limit)
+            
+            # Transform the data to match our response model
+            user_points = []
+            for user in users_data:
+                user_points.append({
+                    "discordId": user["discordId"],
+                    "discordUsername": user["discordUsername"],
+                    "guildId": user["guildId"],
+                    "points": user["points"]
+                })
+            
+            return {
+                "total": total,
+                "users": user_points
+            }
+        except Exception as e:
+            print(f"Error in guild_service.get_guild_top_users: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error retrieving top users: {str(e)}"
+            )
+        
+    async def get_guild_team(
+        self, 
+        guild_id: str,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get the admin/owner team members of a guild
+        """
+        try:
+            # Delegate to the repository
+            team_data, total = await self.guild_repository.get_guild_team(guild_id, limit)
+            
+            # Transform the data to match our response model
+            team_members = []
+            for member in team_data:
+                team_members.append({
+                    "discordId": member["discordId"],
+                    "discordUsername": member["discordUsername"],
+                    "discordUserAvatarURL": member.get("discordUserAvatarURL"),
+                    "guildId": member["guildId"],
+                    "userType": member["userType"],
+                    "joinedAt": member.get("joinedAt")
+                })
+            
+            return {
+                "total": total,
+                "team": team_members
+            }
+        except Exception as e:
+            raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving guild team: {str(e)}"
+        )
 
     async def search_guilds(
         self, 
