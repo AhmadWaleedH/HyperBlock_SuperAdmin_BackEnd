@@ -130,7 +130,7 @@ async def calculate_guild_analytics():
                         active_members += 1
                         
                         # Check if user has engaged with social tasks
-                        if guild_membership.get("completedTasks", 0) > 0:
+                        if (guild_membership.get("completedTasks") or 0) > 0:
                             social_engagers += 1
             
             # Make sure we have at least 1 active member to avoid division by zero
