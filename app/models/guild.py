@@ -59,6 +59,8 @@ class BotConfig(BaseModel):
     userChannels: UserChannels = Field(default_factory=UserChannels)
     chats: ChatConfig = Field(default_factory=ChatConfig)
     reactions: ReactionConfig = Field(default_factory=ReactionConfig)
+    category: Optional[str] = None
+    userCategory: Optional[str] = None
 
 class PointsActions(BaseModel):
     like: Optional[int] = None
@@ -98,8 +100,6 @@ class GuildModel(MongoBaseModel):
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
@@ -124,8 +124,6 @@ class GuildCreate(BaseModel):
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
@@ -139,8 +137,6 @@ class GuildUpdate(BaseModel):
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
@@ -151,8 +147,6 @@ class GuildUpdate(BaseModel):
 # Filter model
 class GuildFilter(BaseModel):
     subscription_tier: Optional[str] = None
-    category: Optional[str] = None
-    user_category: Optional[str] = None
     bot_enabled: Optional[bool] = None
     owner_discord_id: Optional[str] = None
     created_after: Optional[datetime] = None

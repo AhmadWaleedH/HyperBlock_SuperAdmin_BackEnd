@@ -72,8 +72,6 @@ async def delete_guild(
 @router.get("/", response_model=GuildListResponse)
 async def list_guilds(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-    user_category: Optional[str] = Query(None, description="Filter by user category"),
     total_members_min: Optional[int] = Query(None, description="Filter by minimum total members"),
     total_members_max: Optional[int] = Query(None, description="Filter by maximum total members"),
     bot_enabled: Optional[bool] = Query(None, description="Filter by bot enabled status"),
@@ -90,8 +88,6 @@ async def list_guilds(
     # Create filter and pagination objects
     filter_params = GuildFilter(
         subscription_tier=subscription_tier,
-        category=category,
-        user_category=user_category,
         total_members_min=total_members_min,
         total_members_max=total_members_max,
         bot_enabled=bot_enabled,

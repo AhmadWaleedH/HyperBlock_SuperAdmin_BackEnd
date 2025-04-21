@@ -145,12 +145,6 @@ class GuildRepository:
         if filter_params.subscription_tier:
             query["subscription.tier"] = filter_params.subscription_tier
             
-        if filter_params.category:
-            query["category"] = filter_params.category
-            
-        if filter_params.user_category:
-            query["userCategory"] = filter_params.user_category
-            
         if filter_params.bot_enabled is not None:
             query["botConfig.enabled"] = filter_params.bot_enabled
             
