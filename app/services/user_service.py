@@ -2,12 +2,15 @@ from typing import List, Optional, Tuple, Dict, Any
 from fastapi import HTTPException, UploadFile, status
 from datetime import datetime
 
+from app.db.repositories.guilds import GuildRepository
+
 from ..db.repositories.users import UserRepository
 from ..models.user import UserModel, UserCreate, UserUpdate, UserFilter, UserListResponse, PaginationParams
 
 class UserService:
-    def __init__(self, user_repository: UserRepository):
+    def __init__(self, user_repository: UserRepository, guild_repository: GuildRepository):
         self.user_repository = user_repository
+        self.guild_repository = guild_repository
 
     async def create_user(self, user_data: UserCreate) -> UserModel:
         """
@@ -136,3 +139,98 @@ class UserService:
         # Update user with new card image URL
         user_update = UserUpdate(cardImageUrl=card_image_url, updatedAt=datetime.now())
         return await self.user_repository.update(user_id, user_update)
+
+    
+    # Add to services/user_service.py
+    async def exchange_guild_points_to_global(
+        self, 
+        user_id: str, 
+        guild_id: str, 
+        points_amount: int
+    ) -> Dict[str, Any]:
+        """
+        Exchange guild points to global points
+        """
+        # Check if user exists
+        user = await self.user_repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        
+        # Check if user is a member of the guild
+        guild_membership = next((m for m in user.serverMemberships if m.guildId == guild_id), None)
+        if not guild_membership:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User is not a member of guild with ID {guild_id}"
+            )
+        
+        # Check if guild exists and get its ERC value
+        guild = await self.guild_repository.get_by_guild_id(guild_id)
+        if not guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        # Get the ERC value from the guild data
+        erc_value = guild.analytics.ERC
+        if not erc_value or erc_value <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid ERC value for this guild"
+            )
+        
+        # Check if guild membership is active
+        if guild_membership.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Guild membership is not active"
+            )
+        
+        # Check if user has enough points in the guild
+        if not guild_membership.points or guild_membership.points < points_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient guild points. Available: {guild_membership.points or 0}, Requested: {points_amount}"
+            )
+        
+        # Get current values for response
+        previous_guild_points = guild_membership.points
+        previous_global_points = user.hyperBlockPoints or 0
+
+        # Calculate global points to add based on ERC value
+        global_points_to_add = float(points_amount / erc_value)
+        
+        # Update guild points
+        guild_membership.points -= points_amount
+        
+        # Update global points
+        if user.hyperBlockPoints is None:
+            user.hyperBlockPoints = global_points_to_add
+        else:
+            user.hyperBlockPoints += global_points_to_add
+        
+        # Update user record
+        user.updatedAt = datetime.now()
+        updated_user = await self.user_repository.update_full(user)
+        
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update user points"
+            )
+        
+        # Get the updated membership for response
+        updated_membership = next((m for m in updated_user.serverMemberships if m.guildId == guild_id), None)
+        
+        return {
+            "success": True,
+            "previous_guild_points": previous_guild_points,
+            "new_guild_points": updated_membership.points,
+            "previous_global_points": previous_global_points,
+            "new_global_points": updated_user.hyperBlockPoints,
+            "message": f"Successfully exchanged {points_amount} guild points to global points"
+        }

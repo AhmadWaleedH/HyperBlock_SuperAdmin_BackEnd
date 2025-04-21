@@ -129,7 +129,7 @@ class UserModel(MongoBaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = None
+    hyperBlockPoints: Optional[float] = None
     cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
@@ -158,7 +158,7 @@ class UserResponse(MongoBaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = None
+    hyperBlockPoints: Optional[float] = None
     cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
@@ -175,7 +175,7 @@ class UserCreate(BaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = 0
+    hyperBlockPoints: Optional[float] = 0
     subscription: Optional[Subscription] = None
     userGlobalStatus: str = "active"
     socials: Optional[SocialLinks] = None
@@ -189,7 +189,7 @@ class UserUpdate(BaseModel):
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
     cardImageUrl: Optional[str] = None
-    hyperBlockPoints: Optional[int] = None
+    hyperBlockPoints: Optional[float] = None
     subscription: Optional[Subscription] = None
     userGlobalStatus: Optional[str] = None
     socials: Optional[SocialLinks] = None
@@ -220,3 +220,16 @@ class PaginationParams(BaseModel):
 class UserListResponse(BaseModel):
     total: int
     users: List[UserModel]
+
+# User Points Response
+class PointsExchangeRequest(BaseModel):
+    guild_id: str
+    points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
+
+class PointsExchangeResponse(BaseModel):
+    success: bool
+    previous_guild_points: int
+    new_guild_points: int
+    previous_global_points: float
+    new_global_points: float
+    message: str

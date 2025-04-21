@@ -82,11 +82,11 @@ class AnalyticsMetrics(BaseModel):
     pointsUsage: Optional[int] = None
 
 class GuildAnalytics(BaseModel):
-    CAS: int = 0
-    CHS: int = 0
-    EAS: int = 0
-    CCS: int = 0
-    ERC: int = 0
+    CAS: float = 0
+    CHS: float = 0
+    EAS: float = 0
+    CCS: float = 0
+    ERC: float = 0
     vault: int = 0
     reservedPoints: int = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)

@@ -8,9 +8,10 @@ from typing import Any, Dict, Optional, List
 from datetime import datetime, timedelta
 
 from app.api.dependencies import get_current_admin, get_current_user
+from app.db.repositories.guilds import GuildRepository
 
 from ...models.user import (
-    SocialAccounts, SocialLinks, TwitterAccount, UserModel, UserCreate, UserResponse, UserUpdate, UserFilter, 
+    PointsExchangeRequest, PointsExchangeResponse, SocialAccounts, SocialLinks, TwitterAccount, UserModel, UserCreate, UserResponse, UserUpdate, UserFilter, 
     UserListResponse, PaginationParams
 )
 from ...services.user_service import UserService
@@ -21,7 +22,8 @@ router = APIRouter()
 
 async def get_user_service(database = Depends(get_database)) -> UserService:
     user_repository = UserRepository(database)
-    return UserService(user_repository)
+    guild_repository = GuildRepository(database)
+    return UserService(user_repository, guild_repository)
 
 @router.post("/", response_model=UserModel, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -125,6 +127,21 @@ async def search_users(
     """
     pagination = PaginationParams(skip=skip, limit=limit)
     return await user_service.search_users(query, pagination)
+
+@router.post("/exchange-points", response_model=PointsExchangeResponse)
+async def exchange_guild_points(
+    exchange_data: PointsExchangeRequest,
+    current_user: UserModel = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Exchange guild points for global HyperBlock points
+    """
+    return await user_service.exchange_guild_points_to_global(
+        str(current_user.id), 
+        exchange_data.guild_id, 
+        exchange_data.points_amount
+    )
 
 # ------------------------------------------------------------------------------------------
 # Discord Guilds
