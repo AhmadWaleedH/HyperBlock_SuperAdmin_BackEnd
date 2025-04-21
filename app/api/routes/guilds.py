@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from ...models.guild import (
-    GuildModel, GuildCreate, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
+    GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
 from ...models.user import PaginationParams, UserModel
@@ -176,6 +176,48 @@ async def get_guild_team(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving guild team: {str(e)}"
         )
+
+@router.post("/{guild_id}/exchange-points", response_model=GuildPointsExchangeResponse)
+async def exchange_guild_points(
+    exchange_data: GuildPointsExchangeRequest,
+    guild_id: str = Path(..., title="The ID of the guild"),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Exchange points between reserve and vault for a guild
+    """
+    # Verify if the user has admin rights to the guild
+    try:
+        guild = await guild_service.get_guild(guild_id)
+    except HTTPException:
+        try:
+            guild = await guild_service.get_guild_by_discord_id(guild_id)
+        except HTTPException:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+    
+    # Check if current user is the guild owner or an admin
+    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_admin = any(
+        membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
+        for membership in current_user.serverMemberships
+    )
+    is_system_admin = current_user.userGlobalStatus == "admin"
+    
+    if not (is_guild_owner or is_guild_admin or is_system_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to exchange points for this guild"
+        )
+    
+    return await guild_service.exchange_guild_points(
+        str(guild.id),  # Use MongoDB ID
+        exchange_data.exchange_type,
+        exchange_data.points_amount
+    )
 
 # --------------------------------------------------------------------------------
 # Endpoint for uploading guild card images

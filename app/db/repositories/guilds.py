@@ -120,6 +120,46 @@ class GuildRepository:
             )
             
         return await self.get_by_id(guild_id)
+    
+    # Update the analytics object in the guild
+    async def update_analytics(self, guild_id: str, analytics_update: Dict[str, Any]) -> Optional[GuildModel]:
+        """
+        Update guild analytics fields
+        """
+        if not ObjectId.is_valid(guild_id):
+            return None
+        
+        update_data = {"analytics": analytics_update, "updatedAt": datetime.now()}
+        
+        await self.collection.update_one(
+            {"_id": ObjectId(guild_id)},
+            {"$set": update_data}
+        )
+        
+        return await self.get_by_id(guild_id)
+
+    # Update specific fields within the analytics object
+    async def update_analytics_fields(self, guild_id: str, analytics_fields: Dict[str, Any]) -> Optional[GuildModel]:
+        """
+        Update specific fields within guild analytics while preserving other fields
+        """
+        if not ObjectId.is_valid(guild_id):
+            return None
+        
+        # Create update operations for each field
+        update_operations = {}
+        for field, value in analytics_fields.items():
+            update_operations[f"analytics.{field}"] = value
+        
+        # Add updatedAt field
+        update_operations["updatedAt"] = datetime.now()
+        
+        await self.collection.update_one(
+            {"_id": ObjectId(guild_id)},
+            {"$set": update_operations}
+        )
+        
+        return await self.get_by_id(guild_id)
 
     async def delete(self, guild_id: str) -> bool:
         """

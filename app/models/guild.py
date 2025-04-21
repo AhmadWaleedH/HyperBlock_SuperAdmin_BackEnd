@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Dict, List, Optional, Any, Literal, Union
 from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
@@ -180,3 +181,20 @@ class GuildTeamMemberResponse(BaseModel):
 class GuildTeamResponse(BaseModel):
     total: int
     team: List[GuildTeamMemberResponse]
+
+# Points exchange models
+class GuildPointsExchangeType(str, Enum):
+    RESERVE_TO_VAULT = "reserve_to_vault"
+    VAULT_TO_RESERVE = "vault_to_reserve"
+
+class GuildPointsExchangeRequest(BaseModel):
+    exchange_type: GuildPointsExchangeType
+    points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
+
+class GuildPointsExchangeResponse(BaseModel):
+    success: bool
+    previous_reserve_points: int
+    new_reserve_points: int
+    previous_vault_points: int
+    new_vault_points: int
+    message: str
