@@ -23,7 +23,8 @@ async def get_guild_subscription_service(database = Depends(get_database)):
 async def get_user_service(database = Depends(get_database)):
     from ...db.repositories.users import UserRepository
     user_repository = UserRepository(database)
-    return UserService(user_repository)
+    guild_repository = GuildRepository(database)
+    return UserService(user_repository, guild_repository)
 
 
 @router.get("/prices/{tier}", response_model=List[Dict[str, Any]])

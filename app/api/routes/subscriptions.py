@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from typing import Dict, Any, Optional
 
 from app.api.routes.guild_subscriptions import get_guild_subscription_service
+from app.db.repositories.guilds import GuildRepository
 from app.services.guild_stripe_service import GuildStripeService
 from app.services.guild_subscription_service import GuildSubscriptionService
 
@@ -34,7 +35,8 @@ async def get_subscription_service(database = Depends(get_database)):
 
 async def get_user_service(database = Depends(get_database)):
     user_repository = UserRepository(database)
-    return UserService(user_repository)
+    guild_repository = GuildRepository(database)
+    return UserService(user_repository, guild_repository)
 
 
 @router.get("/plans", response_model=Dict[str, Any])
