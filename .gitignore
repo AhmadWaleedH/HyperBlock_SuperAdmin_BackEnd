@@ -50,3 +50,8 @@ node_modules/
 
 # Misc
 .DS_Store
+
+# Jobs Cache
+.cache/
+*.sqlite3
+*.sqlite3-journal

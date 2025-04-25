@@ -26,7 +26,7 @@ class RaffleModel(MongoBaseModel):
     entryCost: int
     startTime: Optional[datetime] = None
     endTime: Optional[datetime] = None
-    chain: str
+    chain: Optional[str] = None
     description: Optional[str] = None
     partnerTwitter: Optional[str] = None
     winnerRole: Optional[str] = None
@@ -54,7 +54,7 @@ class RaffleCreate(BaseModel):
     entryCost: int
     startTime: Optional[datetime] = None
     endTime: Optional[datetime] = None
-    chain: str
+    chain: Optional[str] = None
     description: Optional[str] = None
     partnerTwitter: Optional[str] = None
     winnerRole: Optional[str] = None

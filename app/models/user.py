@@ -4,6 +4,8 @@ from datetime import datetime
 from bson import ObjectId
 import json
 
+from .subscription import Subscription
+
 # For Pydantic v2 - handling MongoDB ObjectId
 class PyObjectId(str):
     @classmethod
@@ -45,10 +47,6 @@ class MongoBaseModel(BaseModel):
         "json_encoders": {ObjectId: str}
     }
 
-# Subscription Schema
-class Subscription(BaseModel):
-    tier: str = "free"
-
 # Social Media Links
 class SocialLinks(BaseModel):
     x: Optional[str] = None
@@ -62,6 +60,10 @@ class TwitterAccount(BaseModel):
     id: Optional[str] = None
     username: Optional[str] = None
     profileUrl: Optional[str] = None
+    tokenType: Optional[str] = None
+    accessToken: Optional[str] = None
+    refreshToken: Optional[str] = None
+    tokenExpiresAt: Optional[datetime] = None
 
 class SocialAccounts(BaseModel):
     twitter: Optional[TwitterAccount] = None
@@ -90,7 +92,7 @@ class ServerMembership(BaseModel):
     guildId: str
     guildName: str
     guildIcon: Optional[str] = None
-    subscription: Subscription = Field(default_factory=Subscription)
+    # subscription: Subscription = Field(default_factory=Subscription)
     status: str = "active"
     joinedAt: Optional[datetime] = None
     points: Optional[int] = None
@@ -127,7 +129,8 @@ class UserModel(MongoBaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = None
+    hyperBlockPoints: Optional[float] = None
+    cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
     socials: SocialLinks = Field(default_factory=SocialLinks)
@@ -149,13 +152,30 @@ class UserModel(MongoBaseModel):
             raise ValueError("Status must be one of: active, inactive, banned")
         return value
 
+# User Response Schema (for API output)
+class UserResponse(MongoBaseModel):
+    discordId: str
+    discordUsername: str
+    discordUserAvatarURL: Optional[str] = None
+    walletAddress: Optional[str] = None
+    hyperBlockPoints: Optional[float] = None
+    cardImageUrl: Optional[str] = None
+    subscription: Subscription = Field(default_factory=Subscription)
+    userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
+    socials: SocialLinks = Field(default_factory=SocialLinks)
+    socialAccounts: Optional[SocialAccounts] = None
+    mintWallets: Optional[MintWallets] = None
+    serverMemberships: List[ServerMembership] = Field(default_factory=list)
+    purchases: List[Purchase] = Field(default_factory=list)
+    activeBids: List[Bid] = Field(default_factory=list)
+
 # User Create Schema (for API input)
 class UserCreate(BaseModel):
     discordId: str
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = 0
+    hyperBlockPoints: Optional[float] = 0
     subscription: Optional[Subscription] = None
     userGlobalStatus: str = "active"
     socials: Optional[SocialLinks] = None
@@ -168,10 +188,12 @@ class UserUpdate(BaseModel):
     discordUsername: Optional[str] = None
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[int] = None
+    cardImageUrl: Optional[str] = None
+    hyperBlockPoints: Optional[float] = None
     subscription: Optional[Subscription] = None
     userGlobalStatus: Optional[str] = None
     socials: Optional[SocialLinks] = None
+    socialAccounts: Optional[SocialAccounts] = None
     mintWallets: Optional[MintWallets] = None
     lastActive: Optional[datetime] = None
     discord_access_token: Optional[str] = None
@@ -198,3 +220,16 @@ class PaginationParams(BaseModel):
 class UserListResponse(BaseModel):
     total: int
     users: List[UserModel]
+
+# User Points Response
+class PointsExchangeRequest(BaseModel):
+    guild_id: str
+    points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
+
+class PointsExchangeResponse(BaseModel):
+    success: bool
+    previous_guild_points: int
+    new_guild_points: int
+    previous_global_points: float
+    new_global_points: float
+    message: str

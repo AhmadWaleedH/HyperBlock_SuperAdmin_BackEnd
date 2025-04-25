@@ -61,6 +61,22 @@ class UserRepository:
             )
             
         return await self.get_by_id(user_id)
+    
+    async def update_full(self, user: UserModel) -> Optional[UserModel]:
+        """
+        Update a complete user document
+        """
+        user_dict = user.model_dump(by_alias=True, exclude={"id"})
+        
+        # Convert ObjectId to string for _id field
+        if user.id:
+            result = await self.collection.update_one(
+                {"_id": user.id}, 
+                {"$set": user_dict}
+            )
+            if result.modified_count:
+                return await self.get_by_id(str(user.id))
+        return None
 
     async def delete(self, user_id: str) -> bool:
         """

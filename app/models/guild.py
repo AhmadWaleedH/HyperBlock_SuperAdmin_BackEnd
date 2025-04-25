@@ -1,7 +1,10 @@
+from enum import Enum
 from typing import Dict, List, Optional, Any, Literal, Union
 from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 from bson import ObjectId
+
+from app.models.guild_subscription import GuildSubscription
 
 from .user import PyObjectId, MongoBaseModel
 
@@ -57,6 +60,8 @@ class BotConfig(BaseModel):
     userChannels: UserChannels = Field(default_factory=UserChannels)
     chats: ChatConfig = Field(default_factory=ChatConfig)
     reactions: ReactionConfig = Field(default_factory=ReactionConfig)
+    category: Optional[str] = None
+    userCategory: Optional[str] = None
 
 class PointsActions(BaseModel):
     like: Optional[int] = None
@@ -71,12 +76,6 @@ class PointsSystem(BaseModel):
     exchangeRate: Optional[float] = None
     actions: PointsActions = Field(default_factory=PointsActions)
 
-class GuildSubscription(BaseModel):
-    tier: str = "free"
-    startDate: Optional[datetime] = None
-    endDate: Optional[datetime] = None
-    autoRenew: Optional[bool] = None
-
 class AnalyticsMetrics(BaseModel):
     activeUsers: Optional[int] = None
     messageCount: Optional[int] = None
@@ -84,11 +83,11 @@ class AnalyticsMetrics(BaseModel):
     pointsUsage: Optional[int] = None
 
 class GuildAnalytics(BaseModel):
-    CAS: int = 0
-    CHS: int = 0
-    EAS: int = 0
-    CCS: int = 0
-    ERC: int = 0
+    CAS: float = 0
+    CHS: float = 0
+    EAS: float = 0
+    CCS: float = 0
+    ERC: float = 0
     vault: int = 0
     reservedPoints: int = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)
@@ -98,11 +97,10 @@ class GuildModel(MongoBaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
@@ -123,11 +121,10 @@ class GuildCreate(BaseModel):
     guildId: str
     guildName: str
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
@@ -137,11 +134,10 @@ class GuildCreate(BaseModel):
 class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
     guildIconURL: Optional[str] = None
+    guildCardImageURL: Optional[str] = None
     ownerDiscordId: Optional[str] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    category: Optional[str] = None
-    userCategory: Optional[str] = None
     announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
@@ -152,8 +148,6 @@ class GuildUpdate(BaseModel):
 # Filter model
 class GuildFilter(BaseModel):
     subscription_tier: Optional[str] = None
-    category: Optional[str] = None
-    user_category: Optional[str] = None
     bot_enabled: Optional[bool] = None
     owner_discord_id: Optional[str] = None
     created_after: Optional[datetime] = None
@@ -165,3 +159,42 @@ class GuildFilter(BaseModel):
 class GuildListResponse(BaseModel):
     total: int
     guilds: List[GuildModel]
+
+class GuildUserPointsResponse(BaseModel):
+    discordId: str
+    discordUsername: str
+    guildId: str
+    points: int
+
+class GuildTopUsersResponse(BaseModel):
+    total: int
+    users: List[GuildUserPointsResponse]
+
+class GuildTeamMemberResponse(BaseModel):
+    discordId: str
+    discordUsername: str
+    discordUserAvatarURL: Optional[str] = None
+    guildId: str
+    userType: str  # Will be "admin" or "owner"
+    joinedAt: Optional[datetime] = None
+
+class GuildTeamResponse(BaseModel):
+    total: int
+    team: List[GuildTeamMemberResponse]
+
+# Points exchange models
+class GuildPointsExchangeType(str, Enum):
+    RESERVE_TO_VAULT = "reserve_to_vault"
+    VAULT_TO_RESERVE = "vault_to_reserve"
+
+class GuildPointsExchangeRequest(BaseModel):
+    exchange_type: GuildPointsExchangeType
+    points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
+
+class GuildPointsExchangeResponse(BaseModel):
+    success: bool
+    previous_reserve_points: int
+    new_reserve_points: int
+    previous_vault_points: int
+    new_vault_points: int
+    message: str

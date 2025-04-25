@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, File, Query, Path, HTTPException, UploadFile, status
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from ...models.guild import (
-    GuildModel, GuildCreate, GuildUpdate, GuildFilter, 
+    GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
-from ...models.user import PaginationParams
+from ...models.user import PaginationParams, UserModel
 from ...services.guild_service import GuildService
 from ...db.repositories.guilds import GuildRepository
 from ...db.database import get_database
-from ..dependencies import get_current_admin
+from ..dependencies import get_current_admin, get_current_user
 
 router = APIRouter()
 
@@ -72,8 +72,6 @@ async def delete_guild(
 @router.get("/", response_model=GuildListResponse)
 async def list_guilds(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-    user_category: Optional[str] = Query(None, description="Filter by user category"),
     total_members_min: Optional[int] = Query(None, description="Filter by minimum total members"),
     total_members_max: Optional[int] = Query(None, description="Filter by maximum total members"),
     bot_enabled: Optional[bool] = Query(None, description="Filter by bot enabled status"),
@@ -90,8 +88,6 @@ async def list_guilds(
     # Create filter and pagination objects
     filter_params = GuildFilter(
         subscription_tier=subscription_tier,
-        category=category,
-        user_category=user_category,
         total_members_min=total_members_min,
         total_members_max=total_members_max,
         bot_enabled=bot_enabled,
@@ -124,3 +120,175 @@ async def get_guild_analytics(
     Get analytics summary for all guilds
     """
     return await guild_service.get_analytics()
+
+@router.get("/{guild_id}/top-users", response_model=GuildTopUsersResponse)
+async def get_guild_top_users(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    limit: int = Query(10, ge=1, le=100, description="Number of top users to return"),
+    guild_service: GuildService = Depends(get_guild_service)
+):
+    """
+    Get top users of a guild ordered by points in descending order
+    """
+    try:
+        # Check if the guild exists first
+        await guild_service.get_guild_by_discord_id(guild_id)
+    except HTTPException:
+        try:
+            # Try with MongoDB ID if Discord ID lookup fails
+            await guild_service.get_guild(guild_id)
+        except HTTPException as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+    
+    # Get top users for the guild
+    return await guild_service.get_guild_top_users(guild_id, limit)
+
+@router.get("/{guild_id}/team", response_model=GuildTeamResponse)
+async def get_guild_team(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of team members to return"),
+    guild_service: GuildService = Depends(get_guild_service)
+):
+    """
+    Get the admin/owner team members of a guild
+    
+    - **guild_id**: ID of the guild (Discord guild ID or MongoDB ID)
+    - **limit**: Maximum number of team members to return (default: 10, max: 100)
+    """
+    try:
+        # Check if the guild exists first
+        try:
+            await guild_service.get_guild_by_discord_id(guild_id)
+        except HTTPException:
+            # Try with MongoDB ID if Discord ID lookup fails
+            await guild_service.get_guild(guild_id)
+        
+        # Get team members for the guild
+        return await guild_service.get_guild_team(guild_id, limit)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error in get_guild_team endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving guild team: {str(e)}"
+        )
+
+@router.post("/{guild_id}/exchange-points", response_model=GuildPointsExchangeResponse)
+async def exchange_guild_points(
+    exchange_data: GuildPointsExchangeRequest,
+    guild_id: str = Path(..., title="The ID of the guild"),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Exchange points between reserve and vault for a guild
+    """
+    # Verify if the user has admin rights to the guild
+    try:
+        guild = await guild_service.get_guild(guild_id)
+    except HTTPException:
+        try:
+            guild = await guild_service.get_guild_by_discord_id(guild_id)
+        except HTTPException:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+    
+    # Check if current user is the guild owner or an admin
+    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_admin = any(
+        membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
+        for membership in current_user.serverMemberships
+    )
+    is_system_admin = current_user.userGlobalStatus == "admin"
+    
+    if not (is_guild_owner or is_guild_admin or is_system_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to exchange points for this guild"
+        )
+    
+    return await guild_service.exchange_guild_points(
+        str(guild.id),  # Use MongoDB ID
+        exchange_data.exchange_type,
+        exchange_data.points_amount
+    )
+
+# --------------------------------------------------------------------------------
+# Endpoint for uploading guild card images
+# --------------------------------------------------------------------------------
+async def get_guild_service(database = Depends(get_database)) -> GuildService:
+    guild_repository = GuildRepository(database)
+    return GuildService(guild_repository)
+
+# Add the new endpoint for uploading guild card images
+@router.post("/{guild_id}/card-image", response_model=GuildModel)
+async def upload_guild_card_image(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    file: UploadFile = File(...),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Upload a card image for a guild
+    """
+
+    # Check for empty file uploads
+    if file is None or not hasattr(file, 'content_type') or file.filename == '' or file.size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file provided or file is empty"
+        )
+    
+    # Get the guild to verify ownership/admin rights
+    try:
+        guild = await guild_service.get_guild_by_discord_id(guild_id)
+    except Exception:
+        guild = await guild_service.get_guild(guild_id)
+    
+    # Check if current user is the guild owner or an admin
+    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_admin = any(
+        membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
+        for membership in current_user.serverMemberships
+    )
+    is_system_admin = current_user.userGlobalStatus == "admin"
+    
+    if not (is_guild_owner or is_guild_admin or is_system_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to upload card image for this guild"
+        )
+    
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+    
+    # Max file size (2MB)
+    max_size = 2 * 1024 * 1024
+    file_size = 0
+    
+    # Calculate file size
+    chunk = await file.read(1024)
+    while chunk:
+        file_size += len(chunk)
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File too large. Maximum size is 2MB"
+            )
+        chunk = await file.read(1024)
+    
+    # Reset file position
+    await file.seek(0)
+    
+    # Upload guild card image
+    return await guild_service.upload_guild_card_image(guild_id, file)

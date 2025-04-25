@@ -1,21 +1,22 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
 from jose import JWTError, jwt
 from pydantic import ValidationError
 from typing import Optional, Dict, Any
-from bson import ObjectId
 
 from ..config import settings
 from ..db.database import get_database
 from ..models.user import UserModel
 from ..db.repositories.users import UserRepository
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_PREFIX}/auth/login"
+security = HTTPBearer(
+    scheme_name="JWT Authentication",
+    description="Enter JWT token",
+    auto_error=False
 )
 
-async def get_current_admin(token: str = Depends(oauth2_scheme)):
+async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
     Dependency for endpoints that require admin authentication
     """
@@ -24,6 +25,11 @@ async def get_current_admin(token: str = Depends(oauth2_scheme)):
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not credentials:
+        raise credentials_exception
+        
+    token = credentials.credentials
     
     try:
         payload = jwt.decode(
@@ -46,7 +52,7 @@ async def get_current_admin(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db = Depends(get_database)
 ) -> Dict[str, Any]:
     """
@@ -58,6 +64,11 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not credentials:
+        raise credentials_exception
+        
+    token = credentials.credentials
     
     try:
         payload = jwt.decode(
@@ -96,23 +107,25 @@ async def get_current_user(
         user_dict["role"] = role
         user_dict["is_admin"] = False
         
-        return user_dict
+        return UserModel.model_validate(user_dict)
         
     except (JWTError, ValidationError, Exception) as e:
         raise credentials_exception
 
 # Optional dependency - doesn't throw exceptions if not authenticated
 async def get_optional_user(
-    token: Optional[str] = Depends(oauth2_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db = Depends(get_database)
 ) -> Optional[Dict[str, Any]]:
     """
     Dependency for endpoints that can work with or without authentication
     Returns user data if authenticated, None otherwise
     """
-    if not token:
+    if not credentials:
         return None
         
+    token = credentials.credentials
+    
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]

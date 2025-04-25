@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
 from .api.routes import router as api_router
@@ -11,6 +12,15 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     debug=settings.DEBUG
+)
+
+# SessionMiddleware  
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=settings.SECRET_KEY,
+    max_age=3600,  # Session expiration in seconds (1 hour)
+    same_site="none" if not settings.DEBUG else "lax",
+    https_only=settings.DEBUG is False  # HTTPS in production
 )
 
 # CORS Middleware
