@@ -230,7 +230,8 @@ class GuildStripeService:
                     "price_id": price_id,
                     "user_id": str(user.id),
                     "entity_type": "guild"  # Indicate this is a guild subscription
-                }
+                },
+                allow_promotion_codes="true",
             )
             
             return {

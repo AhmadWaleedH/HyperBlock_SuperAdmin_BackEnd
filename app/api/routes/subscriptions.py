@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import re
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Body, Header, Query
 from typing import Dict, Any, Optional
@@ -35,7 +36,7 @@ async def get_subscription_service(database = Depends(get_database)):
 
 async def get_user_service(database = Depends(get_database)):
     user_repository = UserRepository(database)
-    guild_repository = GuildRepository(database)
+    guild_repository = GuildSubscriptionService(database).guild_repository
     return UserService(user_repository, guild_repository)
 
 
@@ -69,24 +70,13 @@ async def get_subscription_plans():
         # Format the output with product and price information
         plans = {}
         
-        # Add the free tier manually as it doesn't exist in Stripe
-        plans["free"] = {
-            "id": "free",
-            "name": "Free Tier",
-            "description": "Basic features with limited access",
-            "price": 0,
-            "currency": "usd",
-            "interval": "month",
-            "features": []
-        }
-        
         # Map Stripe product names to tier identifiers
         name_to_tier = {
-            "Seed Tier": "seed",
+            "Seed": "seed",
             "Individual": "individual",
-            "Flare Tier": "flare",
-            "Titan Tier": "titan",
-            "Hyperium Tier": "hyperium"
+            "Flare": "flare",
+            "Titans": "titans",
+            "Hyperium": "hyperium"
         }
         
         for product in products.data:
@@ -136,13 +126,13 @@ async def get_subscription_plans():
             
             if not default_price:
                 continue
-                
-            # Format features from description
+            
+            # Parse features from description
             description = product.description or ""
             feature_list = []
             
+            # Extract features better by looking for common delimiters in descriptions
             if ":" in description:
-                # If description has a colon, split features after the colon
                 parts = description.split(":", 1)
                 short_desc = parts[0].strip()
                 if len(parts) > 1:
@@ -150,6 +140,18 @@ async def get_subscription_plans():
                     feature_list = [feat.strip() for feat in feature_text.split(",")]
             else:
                 short_desc = description
+                # Try to extract features by looking for commas and semicolons
+                potential_features = re.split(r'[,;]', description)
+                if len(potential_features) > 1:
+                    feature_list = [feat.strip() for feat in potential_features]
+                else:
+                    # If no clear delimiters, check for phrases like "and" or look for bullet points
+                    for phrase in ["and", "&", "plus"]:
+                        if f" {phrase} " in description:
+                            parts = description.split(f" {phrase} ")
+                            feature_list = [parts[0].strip()]
+                            feature_list.extend([p.strip() for p in parts[1:]])
+                            break
             
             # Format the plan data
             plans[tier] = {
@@ -161,7 +163,8 @@ async def get_subscription_plans():
                 "interval": default_price["interval"],
                 "price_id": default_price["price_id"],
                 "features": feature_list,
-                "price_options": price_options  # Include all pricing options
+                "price_options": price_options,
+                "image": product.images[0] if product.images else None  # Add image URL if available
             }
         
         return {"plans": plans}
@@ -171,7 +174,6 @@ async def get_subscription_plans():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching subscription plans from Stripe: {str(e)}"
         )
-
 
 @router.get("/my-subscription", response_model=SubscriptionResponse)
 async def get_current_subscription(current_user: UserModel = Depends(get_current_user)):
