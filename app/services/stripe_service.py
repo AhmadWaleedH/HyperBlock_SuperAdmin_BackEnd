@@ -20,10 +20,10 @@ TIER_TO_PRICE_ID = {
     SubscriptionTier.FREE: None,  # Free tier doesn't have a price ID
     # Monthly pricing
     # SubscriptionTier.SEED: "price_1R2gOBPppmUobcNQSyO8qnHZ",
-    SubscriptionTier.INDIVIDUAL: "price_1R2gP4PppmUobcNQGXvNlju3",
+    SubscriptionTier.INDIVIDUAL: "price_1RHllkLgqNjeA3ycJrybt2LO",
     # SubscriptionTier.FLARE: "price_1R2gIaPppmUobcNQYQrhw3NT",
     # SubscriptionTier.TITAN: "price_1R2gLzPppmUobcNQyWYhP6xp",
-    SubscriptionTier.HYPERIUM: "price_1R2gDyPppmUobcNQ6R5CYNUl",
+    SubscriptionTier.HYPERIUM: "price_1RHkRqLgqNjeA3ycnFKuRgTB",
 }
 
 class StripeService:
@@ -136,7 +136,8 @@ class StripeService:
                     "user_id": str(user.id),
                     "discord_id": user.discordId,
                     "tier": tier.value
-                }
+                },
+                allow_promotion_codes="true",
             )
             
             return CheckoutSessionResponse(
