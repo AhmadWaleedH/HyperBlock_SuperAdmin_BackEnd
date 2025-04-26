@@ -96,8 +96,8 @@ class ServerMembership(BaseModel):
     status: str = "active"
     joinedAt: Optional[datetime] = None
     points: Optional[int] = None
-    activeRaids: Optional[int] = None
-    completedTasks: Optional[int] = None
+    totalRaffleRaidsParticipated: Optional[int] = None
+    totalSocialTasksCompleted: Optional[int] = None
     counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)
     userType: str = "member"
 

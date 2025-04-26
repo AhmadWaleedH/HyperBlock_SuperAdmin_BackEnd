@@ -19,7 +19,6 @@ class BotChannels(BaseModel):
     missionsHall: Optional[str] = None
     stadium: Optional[str] = None
     hyperMarket: Optional[str] = None
-    hyperNotes: Optional[str] = None
     raffles: Optional[str] = None
 
 class UserChannels(BaseModel):
@@ -28,6 +27,8 @@ class UserChannels(BaseModel):
     raffles: Optional[str] = None
     shop: Optional[str] = None
     auctions: Optional[str] = None
+    leaderboard: Optional[str] = None
+    hyperNotes: Optional[str] = None
 
 class ChatConfig(BaseModel):
     channelId: Optional[str] = None
@@ -51,6 +52,8 @@ class GuildCounter(BaseModel):
     weeklyStoreUpdateFrequency: int = 0
     auctionUpdateCount: int = 0
     weeklyAuctionUpdateFrequency: int = 0
+    socialTasksCount: int = 0
+    weeklySocialTasksCounter: int = 0
 
 class BotConfig(BaseModel):
     enabled: Optional[bool] = None
@@ -88,8 +91,8 @@ class GuildAnalytics(BaseModel):
     EAS: float = 0
     CCS: float = 0
     ERC: float = 0
-    vault: int = 0
-    reservedPoints: int = 0
+    vault: float = 0
+    reservedPoints: float = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)
 
 # Main Guild model
