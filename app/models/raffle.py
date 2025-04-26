@@ -28,7 +28,7 @@ class RaffleModel(MongoBaseModel):
     endTime: Optional[datetime] = None
     chain: Optional[str] = None
     description: Optional[str] = None
-    partnerTwitter: Optional[str] = None
+    partnerTwitter: Optional[List[str]] = None
     winnerRole: Optional[str] = None
     winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None
@@ -56,7 +56,7 @@ class RaffleCreate(BaseModel):
     endTime: Optional[datetime] = None
     chain: Optional[str] = None
     description: Optional[str] = None
-    partnerTwitter: Optional[str] = None
+    partnerTwitter: Optional[List[str]] = None
     winnerRole: Optional[str] = None
     winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None
@@ -75,7 +75,7 @@ class RaffleUpdate(BaseModel):
     endTime: Optional[datetime] = None
     chain: Optional[str] = None
     description: Optional[str] = None
-    partnerTwitter: Optional[str] = None
+    partnerTwitter: Optional[List[str]] = None
     winnerRole: Optional[str] = None
     winnerRoleName: Optional[str] = None
     roleRequired: Optional[str] = None

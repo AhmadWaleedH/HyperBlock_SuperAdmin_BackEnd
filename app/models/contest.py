@@ -33,6 +33,8 @@ class ContestModel(MongoBaseModel):
     channelName: Optional[str] = None
     pointsForWinners: Optional[List[int]] = None
     votes: List[MessageVote] = Field(default_factory=list)
+    deletionTime: Optional[datetime] = None
+    participants: List[str] = Field(default_factory=list)
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
 
@@ -45,7 +47,7 @@ class ContestModel(MongoBaseModel):
 # Create/Update models
 class ContestCreate(BaseModel):
     guildId: str
-    guilName: Optional[str] = None
+    guildName: Optional[str] = None
     title: str
     duration: datetime
     numberOfWinners: int
@@ -57,6 +59,8 @@ class ContestCreate(BaseModel):
     channelId: Optional[str] = None
     channelName: Optional[str] = None
     pointsForWinners: Optional[List[int]] = None
+    deletionTime: Optional[datetime] = None
+    participants: Optional[List[str]] = None
 
 class ContestUpdate(BaseModel):
     title: Optional[str] = None
@@ -70,6 +74,8 @@ class ContestUpdate(BaseModel):
     channelId: Optional[str] = None
     channelName: Optional[str] = None
     pointsForWinners: Optional[List[int]] = None
+    deletionTime: Optional[datetime] = None
+    participants: Optional[List[str]] = None
 
 # Vote updates
 class AddUserVoteModel(BaseModel):
