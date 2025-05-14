@@ -90,7 +90,7 @@ class ServerMembershipCounter(BaseModel):
 # Server Membership Schema
 class ServerMembership(BaseModel):
     guildId: str
-    guildName: str
+    guildName: Optional[str]
     guildIcon: Optional[str] = None
     # subscription: Subscription = Field(default_factory=Subscription)
     status: str = "active"
