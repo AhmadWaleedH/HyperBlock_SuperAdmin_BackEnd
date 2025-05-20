@@ -36,11 +36,14 @@ async def create_user(
     return await user_service.create_user(user_data)
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
+async def get_current_user_info(
+    current_user: UserModel = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):    
     """
     Get the current logged-in user's information
     """
-    return current_user
+    return await user_service.enrich_user_with_guild_info(current_user)
 
 @router.get("/{user_id}", response_model=UserModel, dependencies=[Depends(get_current_user)])
 async def get_user(
@@ -50,7 +53,8 @@ async def get_user(
     """
     Get a user by ID
     """
-    return await user_service.get_user(user_id)
+    user = await user_service.get_user(user_id)
+    return await user_service.enrich_user_with_guild_info(user)
 
 @router.get("/discord/{discord_id}", response_model=UserModel)
 async def get_user_by_discord_id(
@@ -60,7 +64,8 @@ async def get_user_by_discord_id(
     """
     Get a user by Discord ID
     """
-    return await user_service.get_user_by_discord_id(discord_id)
+    user = await user_service.get_user_by_discord_id(discord_id)
+    return await user_service.enrich_user_with_guild_info(user)
 
 @router.patch("/{user_id}", response_model=UserModel)
 async def update_user(

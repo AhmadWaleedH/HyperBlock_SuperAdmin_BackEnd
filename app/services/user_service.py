@@ -5,7 +5,7 @@ from datetime import datetime
 from app.db.repositories.guilds import GuildRepository
 
 from ..db.repositories.users import UserRepository
-from ..models.user import UserModel, UserCreate, UserUpdate, UserFilter, UserListResponse, PaginationParams
+from ..models.user import ServerMembershipResponse, UserModel, UserCreate, UserResponse, UserUpdate, UserFilter, UserListResponse, PaginationParams
 
 class UserService:
     def __init__(self, user_repository: UserRepository, guild_repository: GuildRepository):
@@ -140,8 +140,28 @@ class UserService:
         user_update = UserUpdate(cardImageUrl=card_image_url, updatedAt=datetime.now())
         return await self.user_repository.update(user_id, user_update)
 
-    
-    # Add to services/user_service.py
+    async def enrich_user_with_guild_info(self, user: UserModel) -> UserResponse:
+        """Enrich user data with guild information for server memberships"""
+        # Convert to response model
+        user_dict = user.model_dump()
+        enriched_memberships = []
+        
+        # Fetch guild info for each membership
+        for membership in user.serverMemberships:
+            membership_dict = membership.model_dump()
+            
+            # Get guild info from guild repository
+            guild = await self.guild_repository.get_by_id(str(membership.guildId))
+            if guild:
+                membership_dict["guildName"] = guild.guildName
+                membership_dict["guildIconURL"] = guild.guildIconURL
+            
+            enriched_memberships.append(ServerMembershipResponse(**membership_dict))
+        
+        # Create user response with enriched memberships
+        user_dict["serverMemberships"] = enriched_memberships
+        return UserResponse(**user_dict)
+
     async def exchange_guild_points_to_global(
         self, 
         user_id: str, 

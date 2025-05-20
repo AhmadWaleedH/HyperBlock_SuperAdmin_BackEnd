@@ -17,14 +17,14 @@ class ShopItemModel(MongoBaseModel):
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
     requiredRoleToPurchaseName: Optional[str] = None
-    server: Optional[PyObjectId] = None  # Reference to Guild
+    guildId: PyObjectId
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
     
     # Serializer for ObjectId field
-    @field_serializer('server')
-    def serialize_server(self, server: Optional[ObjectId]) -> Optional[str]:
-        return str(server) if server else None
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id)
     
     @field_validator('price')
     def price_must_be_positive(cls, v):

@@ -19,8 +19,7 @@ class MessageVote(BaseModel):
 
 # Main Contest model
 class ContestModel(MongoBaseModel):
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     title: str
     duration: datetime
     numberOfWinners: int
@@ -38,6 +37,10 @@ class ContestModel(MongoBaseModel):
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
 
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id)
+
     @field_validator('numberOfWinners')
     def winners_must_be_positive(cls, v):
         if v < 1:
@@ -46,8 +49,7 @@ class ContestModel(MongoBaseModel):
 
 # Create/Update models
 class ContestCreate(BaseModel):
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     title: str
     duration: datetime
     numberOfWinners: int
@@ -91,7 +93,7 @@ class MessageVoteUpdate(BaseModel):
 
 # Filter model
 class ContestFilter(BaseModel):
-    guildId: Optional[str] = None
+    guildId: Optional[PyObjectId] = None
     isActive: Optional[bool] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None

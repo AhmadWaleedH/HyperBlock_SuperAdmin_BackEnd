@@ -16,8 +16,7 @@ class Winner(BaseModel):
 
 # Main Raffle (Giveaway) model
 class RaffleModel(MongoBaseModel):
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     channelId: Optional[str] = None
     channelName: Optional[str] = None
     messageId: Optional[str] = None
@@ -42,10 +41,14 @@ class RaffleModel(MongoBaseModel):
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
 
+    # Serializer for ObjectId field
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id)
+
 # Create/Update models
 class RaffleCreate(BaseModel):
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     channelId: Optional[str] = None
     channelName: Optional[str] = None
     messageId: Optional[str] = None
@@ -95,7 +98,7 @@ class DrawWinnersModel(BaseModel):
 
 # Filter model
 class RaffleFilter(BaseModel):
-    guildId: Optional[str] = None
+    guildId: Optional[PyObjectId] = None
     isExpired: Optional[bool] = None
     chain: Optional[str] = None
     created_after: Optional[datetime] = None

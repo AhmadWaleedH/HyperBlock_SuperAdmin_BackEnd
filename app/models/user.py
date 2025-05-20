@@ -89,9 +89,7 @@ class ServerMembershipCounter(BaseModel):
 
 # Server Membership Schema
 class ServerMembership(BaseModel):
-    guildId: str
-    guildName: str
-    guildIcon: Optional[str] = None
+    guildId: PyObjectId
     # subscription: Subscription = Field(default_factory=Subscription)
     status: str = "active"
     joinedAt: Optional[datetime] = None
@@ -100,6 +98,10 @@ class ServerMembership(BaseModel):
     totalSocialTasksCompleted: Optional[int] = None
     counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)
     userType: str = "member"
+    
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id) if guild_id else None
 
 # Purchase Schema
 class Purchase(BaseModel):
@@ -153,6 +155,10 @@ class UserModel(MongoBaseModel):
         return value
 
 # User Response Schema (for API output)
+class ServerMembershipResponse(ServerMembership):
+    guildName: Optional[str] = None
+    guildIconURL: Optional[str] = None
+
 class UserResponse(MongoBaseModel):
     discordId: str
     discordUsername: str
@@ -165,7 +171,7 @@ class UserResponse(MongoBaseModel):
     socials: SocialLinks = Field(default_factory=SocialLinks)
     socialAccounts: Optional[SocialAccounts] = None
     mintWallets: Optional[MintWallets] = None
-    serverMemberships: List[ServerMembership] = Field(default_factory=list)
+    serverMemberships: List[ServerMembershipResponse] = Field(default_factory=list)
     purchases: List[Purchase] = Field(default_factory=list)
     activeBids: List[Bid] = Field(default_factory=list)
 
@@ -223,7 +229,7 @@ class UserListResponse(BaseModel):
 
 # User Points Response
 class PointsExchangeRequest(BaseModel):
-    guild_id: str
+    guild_id: PyObjectId
     points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
 
 class PointsExchangeResponse(BaseModel):

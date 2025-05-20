@@ -27,8 +27,7 @@ class AuctionModel(MongoBaseModel):
     duration: datetime
     roleForWinner: Optional[str] = None
     roleForWinnerName: Optional[str] = None
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     description: Optional[str] = None
     roleRequired: Optional[str] = None
     minimumBid: float = 0
@@ -40,6 +39,10 @@ class AuctionModel(MongoBaseModel):
     winner: Optional[Winner] = None
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
+
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id) if guild_id else None
 
     @field_validator('quantity')
     def quantity_must_be_positive(cls, v):
@@ -61,8 +64,7 @@ class AuctionCreate(BaseModel):
     duration: datetime
     roleForWinner: Optional[str] = None
     roleForWinnerName: Optional[str] = None
-    guildId: str
-    guildName: Optional[str] = None
+    guildId: PyObjectId
     description: Optional[str] = None
     roleRequired: Optional[str] = None
     minimumBid: float = 0
@@ -102,7 +104,7 @@ class PlaceBidModel(BaseModel):
 
 # Filter model
 class AuctionFilter(BaseModel):
-    guildId: Optional[str] = None
+    guildId: Optional[PyObjectId] = None
     status: Optional[Literal["active", "ended", "cancelled"]] = None
     chain: Optional[str] = None
     created_after: Optional[datetime] = None
