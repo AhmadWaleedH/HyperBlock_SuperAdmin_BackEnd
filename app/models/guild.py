@@ -11,6 +11,12 @@ from .user import PyObjectId, MongoBaseModel
 # Role model for adminRoles
 class AdminRole(BaseModel):
     roleId: str
+    roleName: Optional[str] = None
+    roleIconURL: Optional[str] = None
+
+class ModRole(BaseModel):
+    roleId: str
+    roleName: Optional[str] = None
     roleIconURL: Optional[str] = None
 
 # Base schemas
@@ -30,15 +36,21 @@ class UserChannels(BaseModel):
     leaderboard: Optional[str] = None
     hyperNotes: Optional[str] = None
 
+class ChatChannel(BaseModel):
+    channelId: str
+    channelName: str
+
+class ReactionChannel(BaseModel):
+    channelId: str
+    channelName: str
+    
 class ChatConfig(BaseModel):
-    channelId: Optional[str] = None
-    channelName: Optional[str] = None
+    chatChannels: List[ChatChannel] = Field(default_factory=list)
     cooldown: int = 0
     points: int = 0
 
 class ReactionConfig(BaseModel):
-    channelId: Optional[str] = None
-    channelName: Optional[str] = None
+    reactionChannels: List[ReactionChannel] = Field(default_factory=list)
     cooldown: int = 0
     points: int = 0
 
@@ -59,6 +71,7 @@ class BotConfig(BaseModel):
     enabled: Optional[bool] = None
     prefix: Optional[str] = None
     adminRoles: List[Union[str, AdminRole]] = Field(default_factory=list)
+    modRoles: List[Union[str, ModRole]] = Field(default_factory=list)
     channels: BotChannels = Field(default_factory=BotChannels)
     userChannels: UserChannels = Field(default_factory=UserChannels)
     chats: ChatConfig = Field(default_factory=ChatConfig)
@@ -101,7 +114,7 @@ class GuildModel(MongoBaseModel):
     guildName: str
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
-    ownerDiscordId: Optional[str] = None
+    ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     announcementChannelId: Optional[str] = None
@@ -125,7 +138,7 @@ class GuildCreate(BaseModel):
     guildName: str
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
-    ownerDiscordId: Optional[str] = None
+    ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     announcementChannelId: Optional[str] = None
@@ -138,7 +151,7 @@ class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
-    ownerDiscordId: Optional[str] = None
+    ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
     announcementChannelId: Optional[str] = None

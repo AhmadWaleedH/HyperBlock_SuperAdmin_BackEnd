@@ -192,7 +192,7 @@ async def exchange_guild_points(
         guild = await guild_service.get_guild(guild_id)
     except HTTPException:
         try:
-            guild = await guild_service.get_guild_by_discord_id(guild_id)
+            guild = await guild_service.get_guild_by_id(guild_id)
         except HTTPException:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -200,7 +200,7 @@ async def exchange_guild_points(
             )
     
     # Check if current user is the guild owner or an admin
-    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_owner = guild.ownerId == current_user.discordId
     is_guild_admin = any(
         membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
         for membership in current_user.serverMemberships
