@@ -44,7 +44,7 @@ class ShopItemCreate(BaseModel):
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
     requiredRoleToPurchaseName: Optional[str] = None
-    server: Optional[str] = None  # Guild ID
+    guildId: Optional[PyObjectId] = None  # Guild ID
     
     @field_validator('price')
     def price_must_be_positive(cls, v):
@@ -63,7 +63,7 @@ class ShopItemUpdate(BaseModel):
     blockchainId: Optional[str] = None
     requiredRoleToPurchase: Optional[str] = None
     requiredRoleToPurchaseName: Optional[str] = None
-    server: Optional[str] = None  # Guild ID
+    guildId: Optional[PyObjectId] = None  # Guild ID
     
     @field_validator('price')
     def price_must_be_positive(cls, v):
@@ -84,7 +84,7 @@ class PurchaseItemModel(BaseModel):
 
 # Filter model
 class ShopItemFilter(BaseModel):
-    server: Optional[str] = None  # Guild ID
+    guildId: Optional[PyObjectId] = None  # Guild ID
     min_price: Optional[float] = None
     max_price: Optional[float] = None
     has_quantity_available: Optional[bool] = None

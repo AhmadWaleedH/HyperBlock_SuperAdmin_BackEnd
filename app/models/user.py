@@ -90,12 +90,11 @@ class ServerMembershipCounter(BaseModel):
 # Server Membership Schema
 class ServerMembership(BaseModel):
     guildId: PyObjectId
-    # subscription: Subscription = Field(default_factory=Subscription)
     status: str = "active"
     joinedAt: Optional[datetime] = None
-    points: Optional[int] = None
-    totalRaffleRaidsParticipated: Optional[int] = None
-    totalSocialTasksCompleted: Optional[int] = None
+    points: int = 0
+    totalRaffleRaidsParticipated: int = 0
+    totalSocialTasksCompleted: int = 0
     counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)
     userType: str = "member"
     
@@ -131,7 +130,7 @@ class UserModel(MongoBaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[float] = None
+    hyperBlockPoints: float = 0
     cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")

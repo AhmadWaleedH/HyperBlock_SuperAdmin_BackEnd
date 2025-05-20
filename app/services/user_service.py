@@ -188,7 +188,7 @@ class UserService:
             )
         
         # Check if guild exists and get its ERC value
-        guild = await self.guild_repository.get_by_guild_id(guild_id)
+        guild = await self.guild_repository.get_by_id(guild_id)
         if not guild:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
