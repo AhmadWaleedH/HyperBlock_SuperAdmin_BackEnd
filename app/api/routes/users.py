@@ -96,6 +96,7 @@ async def list_users(
     min_points: Optional[int] = Query(None, description="Minimum hyperblock points"),
     max_points: Optional[int] = Query(None, description="Maximum hyperblock points"),
     discord_username: Optional[str] = Query(None, description="Filter by Discord username"),
+    guild_id: Optional[str] = Query(None, description="Filter by guild/server ID"),
     created_after: Optional[datetime] = Query(None, description="Filter by creation date after"),
     created_before: Optional[datetime] = Query(None, description="Filter by creation date before"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -113,6 +114,7 @@ async def list_users(
         min_points=min_points,
         max_points=max_points,
         discord_username=discord_username,
+        guild_id=guild_id,
         created_after=created_after,
         created_before=created_before
     )

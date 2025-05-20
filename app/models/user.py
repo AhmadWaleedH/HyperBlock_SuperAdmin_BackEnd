@@ -213,6 +213,7 @@ class UserFilter(BaseModel):
     min_points: Optional[int] = None
     max_points: Optional[int] = None
     discord_username: Optional[str] = None
+    guild_id: Optional[str] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None
 
