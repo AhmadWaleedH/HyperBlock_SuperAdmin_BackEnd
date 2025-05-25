@@ -83,7 +83,7 @@ class MintWallets(BaseModel):
 
 # Server Membership Counter Schema
 class ServerMembershipCounter(BaseModel):
-    previousParticipationPoints: int = 0
+    previousParticipationPoints: float = 0
     eventEngager: int = 0
     activeParticipant: bool = True
 
@@ -92,7 +92,7 @@ class ServerMembership(BaseModel):
     guildId: PyObjectId
     status: str = "active"
     joinedAt: Optional[datetime] = None
-    points: int = 0
+    points: float = 0
     totalRaffleRaidsParticipated: int = 0
     totalSocialTasksCompleted: int = 0
     counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)

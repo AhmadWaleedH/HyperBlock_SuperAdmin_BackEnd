@@ -139,6 +139,10 @@ class GuildModel(MongoBaseModel):
         if value not in ["active", "inactive", "pending"]:
             raise ValueError("Bot status must be one of: active, inactive, pending")
         return value
+    
+    @field_serializer('ownerId')
+    def serialize_owner_id(self, owner_id: Optional[ObjectId]) -> Optional[str]:
+        return str(owner_id) if owner_id else None
 
 # Create/Update models
 class GuildCreate(BaseModel):
