@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Dict, List, Optional, Any, Literal, Union
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from datetime import datetime
 from bson import ObjectId
 
@@ -47,12 +47,12 @@ class ReactionChannel(BaseModel):
 class ChatConfig(BaseModel):
     chatChannels: List[ChatChannel] = Field(default_factory=list)
     cooldown: int = 0
-    points: int = 0
+    points: float = 0
 
 class ReactionConfig(BaseModel):
     reactionChannels: List[ReactionChannel] = Field(default_factory=list)
     cooldown: int = 0
-    points: int = 0
+    points: float = 0
 
 class GuildCounter(BaseModel):
     announcementCount: int = 0
@@ -70,8 +70,8 @@ class GuildCounter(BaseModel):
 class BotConfig(BaseModel):
     enabled: Optional[bool] = None
     prefix: Optional[str] = None
-    adminRoles: List[Union[str, AdminRole]] = Field(default_factory=list)
-    modRoles: List[Union[str, ModRole]] = Field(default_factory=list)
+    adminRoles: List[AdminRole] = Field(default_factory=list)
+    modRoles: List[ModRole] = Field(default_factory=list)
     channels: BotChannels = Field(default_factory=BotChannels)
     userChannels: UserChannels = Field(default_factory=UserChannels)
     chats: ChatConfig = Field(default_factory=ChatConfig)
@@ -80,12 +80,12 @@ class BotConfig(BaseModel):
     userCategory: Optional[str] = None
 
 class PointsActions(BaseModel):
-    like: Optional[int] = None
-    retweet: Optional[int] = None
-    comment: Optional[int] = None
-    space: Optional[int] = None
-    reaction: Optional[int] = None
-    messagePoints: Optional[int] = None
+    like: Optional[float] = None
+    retweet: Optional[float] = None
+    comment: Optional[float] = None
+    space: Optional[float] = None
+    reaction: Optional[float] = None
+    messagePoints: Optional[float] = None
 
 class PointsSystem(BaseModel):
     name: Optional[str] = None
@@ -104,6 +104,7 @@ class GuildAnalytics(BaseModel):
     EAS: float = 0
     CCS: float = 0
     ERC: float = 0
+    eventCost: float = 0
     vault: float = 0
     reservedPoints: float = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)
@@ -112,12 +113,13 @@ class GuildAnalytics(BaseModel):
 class GuildModel(MongoBaseModel):
     guildId: str
     guildName: str
+    botStatus: str = Field(..., description="Bot status: active, inactive, pending")
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    announcementChannelId: Optional[str] = None
+    # announcementChannelId: Optional[str] = None
     botConfig: BotConfig = Field(default_factory=BotConfig)
     pointsSystem: PointsSystem = Field(default_factory=PointsSystem)
     subscription: GuildSubscription = Field(default_factory=GuildSubscription)
@@ -131,17 +133,24 @@ class GuildModel(MongoBaseModel):
     @field_serializer('shop')
     def serialize_shop(self, shop_ids: List[ObjectId]) -> List[str]:
         return [str(shop_id) for shop_id in shop_ids]
+    
+    @field_validator('botStatus')
+    def validate_bot_status(cls, value):
+        if value not in ["active", "inactive", "pending"]:
+            raise ValueError("Bot status must be one of: active, inactive, pending")
+        return value
 
 # Create/Update models
 class GuildCreate(BaseModel):
     guildId: str
     guildName: str
+    botStatus: str = "inactive"  # Default status is inactive
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    announcementChannelId: Optional[str] = None
+    # announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
     subscription: Optional[GuildSubscription] = None
@@ -149,22 +158,29 @@ class GuildCreate(BaseModel):
 
 class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
+    botStatus: Optional[str] = None
     guildIconURL: Optional[str] = None
     guildCardImageURL: Optional[str] = None
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
-    announcementChannelId: Optional[str] = None
+    # announcementChannelId: Optional[str] = None
     botConfig: Optional[BotConfig] = None
     pointsSystem: Optional[PointsSystem] = None
     subscription: Optional[GuildSubscription] = None
     counter: Optional[GuildCounter] = None
     analytics: Optional[GuildAnalytics] = None
 
+    @field_validator('botStatus')
+    def validate_bot_status(cls, value):
+        if value is not None and value not in ["active", "inactive", "pending"]:
+            raise ValueError("Bot status must be one of: active, inactive, pending")
+        return value
+
 # Filter model
 class GuildFilter(BaseModel):
     subscription_tier: Optional[str] = None
-    bot_enabled: Optional[bool] = None
+    bot_status: Optional[str] = None
     owner_discord_id: Optional[str] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None

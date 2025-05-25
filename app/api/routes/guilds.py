@@ -74,7 +74,7 @@ async def list_guilds(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
     total_members_min: Optional[int] = Query(None, description="Filter by minimum total members"),
     total_members_max: Optional[int] = Query(None, description="Filter by maximum total members"),
-    bot_enabled: Optional[bool] = Query(None, description="Filter by bot enabled status"),
+    bot_status: Optional[bool] = Query(None, description="Filter by bot enabled status"),
     owner_discord_id: Optional[str] = Query(None, description="Filter by owner Discord ID"),
     created_after: Optional[datetime] = Query(None, description="Filter by creation date after"),
     created_before: Optional[datetime] = Query(None, description="Filter by creation date before"),
@@ -90,7 +90,7 @@ async def list_guilds(
         subscription_tier=subscription_tier,
         total_members_min=total_members_min,
         total_members_max=total_members_max,
-        bot_enabled=bot_enabled,
+        bot_status=bot_status,
         owner_discord_id=owner_discord_id,
         created_after=created_after,
         created_before=created_before

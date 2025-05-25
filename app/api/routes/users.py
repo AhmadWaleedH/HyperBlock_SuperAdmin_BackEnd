@@ -163,8 +163,8 @@ class GuildWithStatus(BaseModel):
     name: str
     icon: Optional[str] = None
     has_hyperblock_bot: bool
+    bot_status: Optional[str] = None
     permissions: Optional[int] = None
-    features: Optional[List[str]] = None
     
 class GuildsResponse(BaseModel):
     guilds: List[GuildWithStatus]
@@ -187,11 +187,17 @@ async def get_user_discord_guilds(
         )
     
     # Create set of guild IDs where the user has HyperBlock bot
-    hyperblock_guild_ids = {
-        membership.guildId 
+    hyperblock_guilds_info = {
+        str(membership.guildId): membership.status 
         for membership in current_user.serverMemberships 
         if membership.status == "active"
     }
+    # Get additional bot status info from Guild documents
+    guild_bot_status = {}
+    for guild_id in hyperblock_guilds_info.keys():
+        guild_doc = await user_service.guild_repository.get_by_id(guild_id)
+        if guild_doc:
+            guild_bot_status[guild_id] = guild_doc.botStatus
     
     # Fetch guilds from Discord API
     async with httpx.AsyncClient() as client:
@@ -219,9 +225,9 @@ async def get_user_discord_guilds(
                 id=guild["id"],
                 name=guild["name"],
                 icon=guild.get("icon"),
-                has_hyperblock_bot=guild["id"] in hyperblock_guild_ids,
+                has_hyperblock_bot=guild["id"] in hyperblock_guilds_info,
+                bot_status=guild_bot_status.get(guild["id"]),
                 permissions=int(guild.get("permissions", 0)),
-                features=guild.get("features", [])
             ) 
             for guild in admin_guilds
         ]

@@ -185,8 +185,8 @@ class GuildRepository:
         if filter_params.subscription_tier:
             query["subscription.tier"] = filter_params.subscription_tier
             
-        if filter_params.bot_enabled is not None:
-            query["botConfig.enabled"] = filter_params.bot_enabled
+        if filter_params.bot_status is not None:
+            query["botStatus"] = filter_params.bot_status
             
         if filter_params.owner_discord_id:
             query["ownerDiscordId"] = filter_params.owner_discord_id
