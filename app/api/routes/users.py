@@ -186,18 +186,19 @@ async def get_user_discord_guilds(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create set of guild IDs where the user has HyperBlock bot
-    hyperblock_guilds_info = {
-        str(membership.guildId): membership.status 
-        for membership in current_user.serverMemberships 
-        if membership.status == "active"
-    }
-    # Get additional bot status info from Guild documents
+    # Get guild documents first to map MongoDB ObjectId to Discord guild ID
+    hyperblock_guilds_info = {}
     guild_bot_status = {}
-    for guild_id in hyperblock_guilds_info.keys():
-        guild_doc = await user_service.guild_repository.get_by_id(guild_id)
-        if guild_doc:
-            guild_bot_status[guild_id] = guild_doc.botStatus
+
+    for membership in current_user.serverMemberships:
+        if membership.status == "active":
+            # Get the guild document using the ObjectId
+            guild_doc = await user_service.guild_repository.get_by_id(str(membership.guildId))
+            if guild_doc:
+                # Use the Discord guild ID from the guild document
+                discord_guild_id = guild_doc.guildId
+                hyperblock_guilds_info[discord_guild_id] = membership.status
+                guild_bot_status[discord_guild_id] = guild_doc.botStatus
     
     # Fetch guilds from Discord API
     async with httpx.AsyncClient() as client:
