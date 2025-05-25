@@ -9,6 +9,7 @@ from .shop import router as shop_router
 from .embed_messages import router as embed_messages_router
 from .subscriptions import router as subscriptions_router
 from .guild_subscriptions import router as guild_subscriptions_router
+from .scheduler import router as scheduler_router
 
 router = APIRouter()
 
@@ -22,3 +23,4 @@ router.include_router(shop_router, prefix="/shop", tags=["shop"])
 router.include_router(embed_messages_router, prefix="/embeds", tags=["embeds"])
 router.include_router(subscriptions_router, prefix="/subscriptions", tags=["Subscriptions"])
 router.include_router(guild_subscriptions_router, prefix="/guild-subscriptions", tags=["Guild Subscriptions"])
+router.include_router(scheduler_router, prefix="/scheduler", tags=["scheduler"])

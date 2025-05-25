@@ -1,17 +1,43 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from contextlib import asynccontextmanager
+import logging
 
 from .config import settings
 from .api.routes import router as api_router
 from .db.database import connect_to_mongo, close_mongo_connection
+from app.scheduler import scheduler
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO if settings.DEBUG else logging.WARNING,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Connect to MongoDB and start scheduler
+    logger.info("Starting application: connecting to MongoDB and starting scheduler")
+    await connect_to_mongo()
+    scheduler.start()
+    
+    yield  # This is where FastAPI serves requests
+    
+    # Shutdown: Close MongoDB connection and shutdown scheduler
+    logger.info("Shutting down application: closing MongoDB connection and stopping scheduler")
+    await close_mongo_connection()
+    scheduler.shutdown()
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
 
 # SessionMiddleware  
@@ -34,15 +60,6 @@ app.add_middleware(
 
 # API Router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
-
-# Startup and shutdown events
-@app.on_event("startup")
-async def startup_db_client():
-    await connect_to_mongo()
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    await close_mongo_connection()
 
 @app.get("/", tags=["health"])
 async def health_check():

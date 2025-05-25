@@ -118,7 +118,10 @@ class UserRepository:
             
         if filter_params.discord_username:
             query["discordUsername"] = {"$regex": filter_params.discord_username, "$options": "i"}
-            
+
+        if filter_params.guild_id:
+            query["serverMemberships.guildId"] = filter_params.guild_id
+
         if filter_params.created_after:
             query["createdAt"] = query.get("createdAt", {})
             query["createdAt"]["$gte"] = filter_params.created_after

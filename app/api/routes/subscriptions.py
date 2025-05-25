@@ -511,7 +511,8 @@ async def handle_stripe_webhook(
                         subscription=enhanced_subscription,
                         botConfig=BotConfig(),
                         pointsSystem=PointsSystem(),
-                        counter=GuildCounter()
+                        counter=GuildCounter(),
+                        botStatus="pending"
                     )
                     
                     try:
