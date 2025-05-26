@@ -74,7 +74,7 @@ async def list_guilds(
     subscription_tier: Optional[str] = Query(None, description="Filter by subscription tier"),
     total_members_min: Optional[int] = Query(None, description="Filter by minimum total members"),
     total_members_max: Optional[int] = Query(None, description="Filter by maximum total members"),
-    bot_enabled: Optional[bool] = Query(None, description="Filter by bot enabled status"),
+    bot_status: Optional[str] = Query(None, description="Filter by bot status"),
     owner_discord_id: Optional[str] = Query(None, description="Filter by owner Discord ID"),
     created_after: Optional[datetime] = Query(None, description="Filter by creation date after"),
     created_before: Optional[datetime] = Query(None, description="Filter by creation date before"),
@@ -90,7 +90,7 @@ async def list_guilds(
         subscription_tier=subscription_tier,
         total_members_min=total_members_min,
         total_members_max=total_members_max,
-        bot_enabled=bot_enabled,
+        bot_status=bot_status,
         owner_discord_id=owner_discord_id,
         created_after=created_after,
         created_before=created_before
@@ -192,7 +192,7 @@ async def exchange_guild_points(
         guild = await guild_service.get_guild(guild_id)
     except HTTPException:
         try:
-            guild = await guild_service.get_guild_by_discord_id(guild_id)
+            guild = await guild_service.get_guild_by_id(guild_id)
         except HTTPException:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -200,7 +200,7 @@ async def exchange_guild_points(
             )
     
     # Check if current user is the guild owner or an admin
-    is_guild_owner = guild.ownerDiscordId == current_user.discordId
+    is_guild_owner = guild.ownerId == current_user.discordId
     is_guild_admin = any(
         membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
         for membership in current_user.serverMemberships

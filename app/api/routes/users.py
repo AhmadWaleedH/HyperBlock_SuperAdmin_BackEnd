@@ -36,11 +36,14 @@ async def create_user(
     return await user_service.create_user(user_data)
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
+async def get_current_user_info(
+    current_user: UserModel = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):    
     """
     Get the current logged-in user's information
     """
-    return current_user
+    return await user_service.enrich_user_with_guild_info(current_user)
 
 @router.get("/{user_id}", response_model=UserModel, dependencies=[Depends(get_current_user)])
 async def get_user(
@@ -50,7 +53,8 @@ async def get_user(
     """
     Get a user by ID
     """
-    return await user_service.get_user(user_id)
+    user = await user_service.get_user(user_id)
+    return await user_service.enrich_user_with_guild_info(user)
 
 @router.get("/discord/{discord_id}", response_model=UserModel)
 async def get_user_by_discord_id(
@@ -60,7 +64,8 @@ async def get_user_by_discord_id(
     """
     Get a user by Discord ID
     """
-    return await user_service.get_user_by_discord_id(discord_id)
+    user = await user_service.get_user_by_discord_id(discord_id)
+    return await user_service.enrich_user_with_guild_info(user)
 
 @router.patch("/{user_id}", response_model=UserModel)
 async def update_user(
@@ -91,6 +96,7 @@ async def list_users(
     min_points: Optional[int] = Query(None, description="Minimum hyperblock points"),
     max_points: Optional[int] = Query(None, description="Maximum hyperblock points"),
     discord_username: Optional[str] = Query(None, description="Filter by Discord username"),
+    guild_id: Optional[str] = Query(None, description="Filter by guild/server ID"),
     created_after: Optional[datetime] = Query(None, description="Filter by creation date after"),
     created_before: Optional[datetime] = Query(None, description="Filter by creation date before"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -108,6 +114,7 @@ async def list_users(
         min_points=min_points,
         max_points=max_points,
         discord_username=discord_username,
+        guild_id=guild_id,
         created_after=created_after,
         created_before=created_before
     )
@@ -156,8 +163,8 @@ class GuildWithStatus(BaseModel):
     name: str
     icon: Optional[str] = None
     has_hyperblock_bot: bool
+    bot_status: Optional[str] = None
     permissions: Optional[int] = None
-    features: Optional[List[str]] = None
     
 class GuildsResponse(BaseModel):
     guilds: List[GuildWithStatus]
@@ -179,12 +186,19 @@ async def get_user_discord_guilds(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create set of guild IDs where the user has HyperBlock bot
-    hyperblock_guild_ids = {
-        membership.guildId 
-        for membership in current_user.serverMemberships 
-        if membership.status == "active"
-    }
+    # Get guild documents first to map MongoDB ObjectId to Discord guild ID
+    hyperblock_guilds_info = {}
+    guild_bot_status = {}
+
+    for membership in current_user.serverMemberships:
+        if membership.status == "active":
+            # Get the guild document using the ObjectId
+            guild_doc = await user_service.guild_repository.get_by_id(str(membership.guildId))
+            if guild_doc:
+                # Use the Discord guild ID from the guild document
+                discord_guild_id = guild_doc.guildId
+                hyperblock_guilds_info[discord_guild_id] = membership.status
+                guild_bot_status[discord_guild_id] = guild_doc.botStatus
     
     # Fetch guilds from Discord API
     async with httpx.AsyncClient() as client:
@@ -212,9 +226,9 @@ async def get_user_discord_guilds(
                 id=guild["id"],
                 name=guild["name"],
                 icon=guild.get("icon"),
-                has_hyperblock_bot=guild["id"] in hyperblock_guild_ids,
+                has_hyperblock_bot=guild["id"] in hyperblock_guilds_info,
+                bot_status=guild_bot_status.get(guild["id"]),
                 permissions=int(guild.get("permissions", 0)),
-                features=guild.get("features", [])
             ) 
             for guild in admin_guilds
         ]

@@ -83,23 +83,24 @@ class MintWallets(BaseModel):
 
 # Server Membership Counter Schema
 class ServerMembershipCounter(BaseModel):
-    previousParticipationPoints: int = 0
+    previousParticipationPoints: float = 0
     eventEngager: int = 0
     activeParticipant: bool = True
 
 # Server Membership Schema
 class ServerMembership(BaseModel):
-    guildId: str
-    guildName: str
-    guildIcon: Optional[str] = None
-    # subscription: Subscription = Field(default_factory=Subscription)
+    guildId: PyObjectId
     status: str = "active"
     joinedAt: Optional[datetime] = None
-    points: Optional[int] = None
-    totalRaffleRaidsParticipated: Optional[int] = None
-    totalSocialTasksCompleted: Optional[int] = None
+    points: float = 0
+    totalRaffleRaidsParticipated: int = 0
+    totalSocialTasksCompleted: int = 0
     counter: ServerMembershipCounter = Field(default_factory=ServerMembershipCounter)
     userType: str = "member"
+    
+    @field_serializer('guildId')
+    def serialize_guild_id(self, guild_id: ObjectId) -> str:
+        return str(guild_id) if guild_id else None
 
 # Purchase Schema
 class Purchase(BaseModel):
@@ -129,7 +130,7 @@ class UserModel(MongoBaseModel):
     discordUsername: str
     discordUserAvatarURL: Optional[str] = None
     walletAddress: Optional[str] = None
-    hyperBlockPoints: Optional[float] = None
+    hyperBlockPoints: float = 0
     cardImageUrl: Optional[str] = None
     subscription: Subscription = Field(default_factory=Subscription)
     userGlobalStatus: str = Field(default="active", description="User status: active, inactive, banned")
@@ -153,6 +154,10 @@ class UserModel(MongoBaseModel):
         return value
 
 # User Response Schema (for API output)
+class ServerMembershipResponse(ServerMembership):
+    guildName: Optional[str] = None
+    guildIconURL: Optional[str] = None
+
 class UserResponse(MongoBaseModel):
     discordId: str
     discordUsername: str
@@ -165,7 +170,7 @@ class UserResponse(MongoBaseModel):
     socials: SocialLinks = Field(default_factory=SocialLinks)
     socialAccounts: Optional[SocialAccounts] = None
     mintWallets: Optional[MintWallets] = None
-    serverMemberships: List[ServerMembership] = Field(default_factory=list)
+    serverMemberships: List[ServerMembershipResponse] = Field(default_factory=list)
     purchases: List[Purchase] = Field(default_factory=list)
     activeBids: List[Bid] = Field(default_factory=list)
 
@@ -208,6 +213,7 @@ class UserFilter(BaseModel):
     min_points: Optional[int] = None
     max_points: Optional[int] = None
     discord_username: Optional[str] = None
+    guild_id: Optional[str] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None
 
@@ -223,7 +229,7 @@ class UserListResponse(BaseModel):
 
 # User Points Response
 class PointsExchangeRequest(BaseModel):
-    guild_id: str
+    guild_id: PyObjectId
     points_amount: int = Field(gt=0, description="Amount of points to exchange (must be positive)")
 
 class PointsExchangeResponse(BaseModel):
