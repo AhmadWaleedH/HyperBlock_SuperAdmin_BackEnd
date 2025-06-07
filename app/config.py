@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 # Load .env file
 load_dotenv()
 
+FRONTEND_URLS = [
+    "http://localhost:3000",  # Development
+    "http://127.0.0.1:3000",  # Alternative localhost
+]
+
 class Settings(BaseSettings):
     # API Settings
     API_V1_PREFIX: str = Field(default="/api/v1")
