@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 FRONTEND_URLS = [
-    "http://localhost:3000",  # Development
-    "http://127.0.0.1:3000",  # Alternative localhost
+    "https://hyperblockstudio.com",
+    "https://www.hyperblockstudio.com",  # Alternative domain
+    "https://api.hyperblockstudio.com",
 ]
 
 class Settings(BaseSettings):
