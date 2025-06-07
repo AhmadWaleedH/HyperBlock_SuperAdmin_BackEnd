@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from .config import settings
+from .config import settings, FRONTEND_URLS
 from .api.routes import router as api_router
 from .db.database import connect_to_mongo, close_mongo_connection
 from app.scheduler import scheduler
@@ -53,7 +53,7 @@ app.add_middleware(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=FRONTEND_URLS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
