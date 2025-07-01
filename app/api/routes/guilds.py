@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from ...models.guild import (
-    GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
+    CardConfigResponse, CardConfigUpdateRequest, CardUploadResponse, GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
 from ...models.user import PaginationParams, UserModel
@@ -226,43 +226,79 @@ async def get_guild_service(database = Depends(get_database)) -> GuildService:
     guild_repository = GuildRepository(database)
     return GuildService(guild_repository)
 
-# Add the new endpoint for uploading guild card images
-@router.post("/{guild_id}/card-image", response_model=GuildModel)
-async def upload_guild_card_image(
+# Upload card background image
+@router.post("/{guild_id}/card-config/background", response_model=CardUploadResponse)
+async def upload_card_background(
     guild_id: str = Path(..., title="The ID of the guild"),
     file: UploadFile = File(...),
     guild_service: GuildService = Depends(get_guild_service),
     current_user: UserModel = Depends(get_current_user)
 ):
-    """
-    Upload a card image for a guild
-    """
+    """Upload card background image for a guild"""
+    return await _upload_card_component(guild_id, file, "background", guild_service, current_user)
 
+# Upload community icon
+@router.post("/{guild_id}/card-config/community-icon", response_model=CardUploadResponse)
+async def upload_community_icon(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    file: UploadFile = File(...),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Upload community icon for a guild"""
+    return await _upload_card_component(guild_id, file, "community_icon", guild_service, current_user)
+
+# Upload HB icon
+@router.post("/{guild_id}/card-config/hb-icon", response_model=CardUploadResponse)
+async def upload_hb_icon(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    file: UploadFile = File(...),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Upload HB icon for a guild"""
+    return await _upload_card_component(guild_id, file, "hb_icon", guild_service, current_user)
+
+# Update token name
+@router.patch("/{guild_id}/card-config/token-name", response_model=dict)
+async def update_token_name(
+    request: CardConfigUpdateRequest,
+    guild_id: str = Path(..., title="The ID of the guild"),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Update token name for a guild"""
+    await guild_service.update_card_token_name(guild_id, request.tokenName, current_user)
+    return {
+        "success": True,
+        "message": "Token name updated successfully",
+        "tokenName": request.tokenName
+    }
+
+# Get card config
+@router.get("/{guild_id}/card-config", response_model=CardConfigResponse)
+async def get_card_config(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    guild_service: GuildService = Depends(get_guild_service)
+):
+    """Get card configuration for a guild"""
+    return await guild_service.get_card_config(guild_id)
+
+# Helper function for file uploads
+async def _upload_card_component(
+    guild_id: str,
+    file: UploadFile,
+    component_type: str,
+    guild_service: GuildService,
+    current_user: UserModel
+):
+    """Common logic for uploading card components"""
+    
     # Check for empty file uploads
     if file is None or not hasattr(file, 'content_type') or file.filename == '' or file.size == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No file provided or file is empty"
-        )
-    
-    # Get the guild to verify ownership/admin rights
-    try:
-        guild = await guild_service.get_guild_by_discord_id(guild_id)
-    except Exception:
-        guild = await guild_service.get_guild(guild_id)
-    
-    # Check if current user is the guild owner or an admin
-    is_guild_owner = guild.ownerDiscordId == current_user.discordId
-    is_guild_admin = any(
-        membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
-        for membership in current_user.serverMemberships
-    )
-    is_system_admin = current_user.userGlobalStatus == "admin"
-    
-    if not (is_guild_owner or is_guild_admin or is_system_admin):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to upload card image for this guild"
         )
     
     # Validate file type
@@ -290,5 +326,5 @@ async def upload_guild_card_image(
     # Reset file position
     await file.seek(0)
     
-    # Upload guild card image
-    return await guild_service.upload_guild_card_image(guild_id, file)
+    # Upload component
+    return await guild_service.upload_card_component(guild_id, file, component_type, current_user)

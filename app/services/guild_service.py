@@ -5,8 +5,8 @@ from datetime import datetime
 from app.services.s3_service import S3Service
 
 from ..db.repositories.guilds import GuildRepository
-from ..models.guild import GuildModel, GuildCreate, GuildUpdate, GuildFilter, GuildListResponse
-from ..models.user import PaginationParams
+from ..models.guild import CardConfig, CardConfigResponse, CardUploadResponse, GuildModel, GuildCreate, GuildUpdate, GuildFilter, GuildListResponse
+from ..models.user import PaginationParams, UserModel
 
 class GuildService:
     def __init__(self, guild_repository: GuildRepository):
@@ -184,38 +184,6 @@ class GuildService:
         """
         return await self.guild_repository.get_guild_analytics()
     
-    async def upload_guild_card_image(self, guild_id: str, file: UploadFile) -> GuildModel:
-        """
-        Upload a card image for a guild and update its profile
-        """
-        # Check if guild exists
-        existing_guild = await self.guild_repository.get_by_guild_id(guild_id)
-        if not existing_guild:
-            existing_guild = await self.guild_repository.get_by_id(guild_id)
-        if not existing_guild:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Guild with ID {guild_id} not found"
-            )
-        
-        # Upload file to S3
-        s3_service = S3Service()
-        
-        # If guild already has a card image, delete it first
-        if existing_guild.guildCardImageURL:
-            await s3_service.delete_file(existing_guild.guildCardImageURL)
-        
-        # Upload new image
-        card_image_url = await s3_service.upload_file(
-            file, 
-            folder=f"guild-cards/{guild_id}"
-        )
-        print("Card image URL:", card_image_url)
-        
-        # Update guild with new card image URL
-        guild_update = GuildUpdate(guildCardImageURL=card_image_url, updatedAt=datetime.now())
-        return await self.guild_repository.update(existing_guild.id, guild_update)
-    
     async def exchange_guild_points(
         self, 
         guild_id: str, 
@@ -285,3 +253,128 @@ class GuildService:
             "new_vault_points": updated_guild.analytics.vault,
             "message": f"Successfully exchanged {points_amount} points from {exchange_direction}"
         }
+    
+    async def upload_card_component(self, guild_id: str, file: UploadFile, component_type: str, current_user: UserModel) -> GuildModel:
+        """Upload a card component for a guild"""
+        
+        # Verify permissions
+        await self._verify_guild_permissions(guild_id, current_user)
+        
+        # Get existing guild
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        if not existing_guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        # Upload file to S3
+        s3_service = S3Service()
+        
+        # Delete old file if exists
+        old_url = None
+        if component_type == "background":
+            old_url = existing_guild.cardConfig.cardImageBackground
+        elif component_type == "community_icon":
+            old_url = existing_guild.cardConfig.communityIcon
+        elif component_type == "hb_icon":
+            old_url = existing_guild.cardConfig.hbIcon
+        
+        if old_url:
+            await s3_service.delete_file(old_url)
+        
+        # Upload new file
+        new_url = await s3_service.upload_file(file, folder=f"guild-cards/{guild_id}/{component_type}")
+        
+        # Update card config
+        card_config = existing_guild.cardConfig.dict()
+        if component_type == "background":
+            card_config["cardImageBackground"] = new_url
+        elif component_type == "community_icon":
+            card_config["communityIcon"] = new_url
+        elif component_type == "hb_icon":
+            card_config["hbIcon"] = new_url
+        
+        # Update guild
+        guild_update = GuildUpdate(cardConfig=CardConfig(**card_config), updatedAt=datetime.now())
+        await self.guild_repository.update(existing_guild.id, guild_update)
+        
+        # Return success response instead of guild object
+        component_names = {
+            "background": "Background Image",
+            "community_icon": "Community Icon", 
+            "hb_icon": "HB Icon"
+        }
+        
+        return CardUploadResponse(
+            success=True,
+            message=f"{component_names[component_type]} uploaded successfully",
+            component=component_type,
+            imageUrl=new_url
+        )
+
+    async def update_card_token_name(self, guild_id: str, token_name: str, current_user: UserModel) -> GuildModel:
+        """Update token name for a guild"""
+        
+        # Verify permissions
+        await self._verify_guild_permissions(guild_id, current_user)
+        
+        # Get existing guild
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        
+        # Update card config
+        card_config = existing_guild.cardConfig.dict()
+        card_config["tokenName"] = token_name or ""
+        
+        # Update guild
+        guild_update = GuildUpdate(cardConfig=CardConfig(**card_config), updatedAt=datetime.now())
+        await self.guild_repository.update(existing_guild.id, guild_update)
+
+    async def get_card_config(self, guild_id: str) -> CardConfigResponse:
+        """Get card configuration for a guild"""
+        
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        if not existing_guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        return CardConfigResponse(**existing_guild.cardConfig.dict())
+
+    # Helper methods
+    async def _verify_guild_permissions(self, guild_id: str, current_user: UserModel):
+        """Verify user has permissions to modify guild"""
+        guild = await self.guild_repository.get_by_id(guild_id)
+        if not guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        is_guild_owner = guild.ownerId == current_user.id
+        is_guild_admin = any(
+            membership.guildId == guild.guildId and membership.userType in ["admin", "owner"]
+            for membership in current_user.serverMemberships
+        )
+        is_system_admin = current_user.userGlobalStatus == "admin"
+        
+        if not (is_guild_owner or is_guild_admin or is_system_admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to modify this guild"
+            )
+
+    async def _get_guild_by_id_or_discord_id(self, guild_id: str) -> GuildModel:
+        """Get guild by ID or Discord ID"""
+        try:
+            guild = await self.guild_repository.get_by_id(guild_id)
+        except Exception:
+            guild = await self.guild_repository.get_by_guild_id(guild_id)
+        
+        if not guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        return guild
