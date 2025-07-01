@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from ...models.guild import (
-    CardConfigResponse, CardConfigUpdateRequest, CardUploadResponse, GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
+    CardConfigComponentResetResponse, CardConfigResetResponse, CardConfigResponse, CardConfigUpdateRequest, CardUploadResponse, GuildModel, GuildCreate, GuildPointsExchangeRequest, GuildPointsExchangeResponse, GuildTeamResponse, GuildTopUsersResponse, GuildUpdate, GuildFilter, 
     GuildListResponse
 )
 from ...models.user import PaginationParams, UserModel
@@ -328,3 +328,30 @@ async def _upload_card_component(
     
     # Upload component
     return await guild_service.upload_card_component(guild_id, file, component_type, current_user)
+
+# Reset card configuration
+@router.delete("/{guild_id}/card-config/reset", response_model=CardConfigResetResponse)
+async def reset_card_config(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Reset card configuration for a guild (removes all images and clears token name)"""
+    return await guild_service.reset_card_config(guild_id, current_user)
+
+# Reset specific component
+@router.delete("/{guild_id}/card-config/{component}", response_model=CardConfigComponentResetResponse)
+async def reset_card_component(
+    guild_id: str = Path(..., title="The ID of the guild"),
+    component: str = Path(..., title="Component to reset", regex="^(background|community-icon|hb-icon|token-name)$"),
+    guild_service: GuildService = Depends(get_guild_service),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Reset a specific card component"""
+    component_map = {
+        "background": "background",
+        "community-icon": "community_icon", 
+        "hb-icon": "hb_icon",
+        "token-name": "token_name"
+    }
+    return await guild_service.reset_card_component(guild_id, component_map[component], current_user)

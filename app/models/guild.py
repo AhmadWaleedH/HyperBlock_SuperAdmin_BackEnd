@@ -256,3 +256,13 @@ class CardUploadResponse(BaseModel):
     message: str
     component: str
     imageUrl: Optional[str] = None
+
+class CardConfigResetResponse(BaseModel):
+    success: bool
+    message: str
+    resetComponents: List[str]  # List of components that were reset
+    
+class CardConfigComponentResetResponse(BaseModel):
+    success: bool
+    message: str
+    resetComponent: str

@@ -5,7 +5,7 @@ from datetime import datetime
 from app.services.s3_service import S3Service
 
 from ..db.repositories.guilds import GuildRepository
-from ..models.guild import CardConfig, CardConfigResponse, CardUploadResponse, GuildModel, GuildCreate, GuildUpdate, GuildFilter, GuildListResponse
+from ..models.guild import CardConfig, CardConfigComponentResetResponse, CardConfigResetResponse, CardConfigResponse, CardUploadResponse, GuildModel, GuildCreate, GuildUpdate, GuildFilter, GuildListResponse
 from ..models.user import PaginationParams, UserModel
 
 class GuildService:
@@ -254,7 +254,7 @@ class GuildService:
             "message": f"Successfully exchanged {points_amount} points from {exchange_direction}"
         }
     
-    async def upload_card_component(self, guild_id: str, file: UploadFile, component_type: str, current_user: UserModel) -> GuildModel:
+    async def upload_card_component(self, guild_id: str, file: UploadFile, component_type: str, current_user: UserModel) -> CardUploadResponse:
         """Upload a card component for a guild"""
         
         # Verify permissions
@@ -313,7 +313,7 @@ class GuildService:
             imageUrl=new_url
         )
 
-    async def update_card_token_name(self, guild_id: str, token_name: str, current_user: UserModel) -> GuildModel:
+    async def update_card_token_name(self, guild_id: str, token_name: str, current_user: UserModel) -> None:
         """Update token name for a guild"""
         
         # Verify permissions
@@ -364,17 +364,99 @@ class GuildService:
                 detail="Not authorized to modify this guild"
             )
 
-    async def _get_guild_by_id_or_discord_id(self, guild_id: str) -> GuildModel:
-        """Get guild by ID or Discord ID"""
-        try:
-            guild = await self.guild_repository.get_by_id(guild_id)
-        except Exception:
-            guild = await self.guild_repository.get_by_guild_id(guild_id)
+    async def reset_card_config(self, guild_id: str, current_user: UserModel) -> CardConfigResetResponse:
+        """Reset entire card configuration for a guild"""
         
-        if not guild:
+        # Verify permissions
+        await self._verify_guild_permissions(guild_id, current_user)
+        
+        # Get existing guild
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        if not existing_guild:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Guild with ID {guild_id} not found"
             )
         
-        return guild
+        # Delete all existing images from S3
+        s3_service = S3Service()
+        
+        # Collect all image URLs to delete
+        urls_to_delete = []
+        if existing_guild.cardConfig.cardImageBackground:
+            urls_to_delete.append(existing_guild.cardConfig.cardImageBackground)
+        if existing_guild.cardConfig.communityIcon:
+            urls_to_delete.append(existing_guild.cardConfig.communityIcon)
+        if existing_guild.cardConfig.hbIcon:
+            urls_to_delete.append(existing_guild.cardConfig.hbIcon)
+        
+        # Delete files from S3
+        for url in urls_to_delete:
+            await s3_service.delete_file(url)
+        
+        # Reset card config to default
+        default_card_config = CardConfig()  # This creates a new instance with default values
+        
+        # Update guild
+        guild_update = GuildUpdate(cardConfig=default_card_config, updatedAt=datetime.now())
+        await self.guild_repository.update(existing_guild.id, guild_update)
+    
+        # Return success response
+        return CardConfigResetResponse(
+            success=True,
+            message="Card configuration reset successfully",
+            resetComponents=["cardImageBackground", "communityIcon", "hbIcon", "tokenName"]
+        )
+
+    async def reset_card_component(self, guild_id: str, component_type: str, current_user: UserModel) -> CardConfigComponentResetResponse:
+        """Reset a specific card component for a guild"""
+        
+        # Verify permissions
+        await self._verify_guild_permissions(guild_id, current_user)
+        
+        # Get existing guild
+        existing_guild = await self.guild_repository.get_by_id(guild_id)
+        if not existing_guild:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Guild with ID {guild_id} not found"
+            )
+        
+        # Get current card config
+        card_config = existing_guild.cardConfig.dict()
+        
+        # Delete specific file from S3 and reset component
+        s3_service = S3Service()
+        
+        if component_type == "background" and card_config.get("cardImageBackground"):
+            await s3_service.delete_file(card_config["cardImageBackground"])
+            card_config["cardImageBackground"] = None
+            
+        elif component_type == "community_icon" and card_config.get("communityIcon"):
+            await s3_service.delete_file(card_config["communityIcon"])
+            card_config["communityIcon"] = None
+            
+        elif component_type == "hb_icon" and card_config.get("hbIcon"):
+            await s3_service.delete_file(card_config["hbIcon"])
+            card_config["hbIcon"] = None
+            
+        elif component_type == "token_name":
+            card_config["tokenName"] = ""
+        
+        # Update guild
+        guild_update = GuildUpdate(cardConfig=CardConfig(**card_config), updatedAt=datetime.now())
+        await self.guild_repository.update(existing_guild.id, guild_update)
+    
+        # Return success response
+        component_names = {
+            "background": "cardImageBackground",
+            "community_icon": "communityIcon", 
+            "hb_icon": "hbIcon",
+            "token_name": "tokenName"
+        }
+        
+        return CardConfigComponentResetResponse(
+            success=True,
+            message=f"{component_names[component_type]} reset successfully",
+            resetComponent=component_names[component_type]
+        )
