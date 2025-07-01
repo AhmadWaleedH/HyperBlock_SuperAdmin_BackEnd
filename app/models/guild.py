@@ -109,13 +109,19 @@ class GuildAnalytics(BaseModel):
     reservedPoints: float = 0
     metrics: AnalyticsMetrics = Field(default_factory=AnalyticsMetrics)
 
+class CardConfig(BaseModel):
+    cardImageBackground: Optional[str] = None
+    communityIcon: Optional[str] = None
+    hbIcon: Optional[str] = None
+    tokenName: str = "HB"
+
 # Main Guild model
 class GuildModel(MongoBaseModel):
     guildId: str
     guildName: str
     botStatus: str = Field(..., description="Bot status: active, inactive, pending")
     guildIconURL: Optional[str] = None
-    guildCardImageURL: Optional[str] = None
+    cardConfig: CardConfig = Field(default_factory=CardConfig)
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
@@ -150,7 +156,7 @@ class GuildCreate(BaseModel):
     guildName: str
     botStatus: str = "inactive"  # Default status is inactive
     guildIconURL: Optional[str] = None
-    guildCardImageURL: Optional[str] = None
+    cardConfig: CardConfig = Field(default_factory=CardConfig)
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
@@ -164,7 +170,7 @@ class GuildUpdate(BaseModel):
     guildName: Optional[str] = None
     botStatus: Optional[str] = None
     guildIconURL: Optional[str] = None
-    guildCardImageURL: Optional[str] = None
+    cardConfig: CardConfig = Field(default_factory=CardConfig)
     ownerId: Optional[PyObjectId] = None
     totalMembers: Optional[int] = None
     twitterUrl: Optional[str] = None
@@ -234,3 +240,29 @@ class GuildPointsExchangeResponse(BaseModel):
     previous_vault_points: int
     new_vault_points: int
     message: str
+
+# Card Config Models
+class CardConfigUpdateRequest(BaseModel):
+    tokenName: Optional[str] = None
+
+class CardConfigResponse(BaseModel):
+    cardImageBackground: Optional[str] = None
+    communityIcon: Optional[str] = None
+    hbIcon: Optional[str] = None
+    tokenName: str = ""
+
+class CardUploadResponse(BaseModel):
+    success: bool
+    message: str
+    component: str
+    imageUrl: Optional[str] = None
+
+class CardConfigResetResponse(BaseModel):
+    success: bool
+    message: str
+    resetComponents: List[str]  # List of components that were reset
+    
+class CardConfigComponentResetResponse(BaseModel):
+    success: bool
+    message: str
+    resetComponent: str
