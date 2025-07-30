@@ -23,7 +23,7 @@ TIER_TO_PRICE_ID = {
     SubscriptionTier.INDIVIDUAL: "price_1RHllkLgqNjeA3ycJrybt2LO",
     # SubscriptionTier.FLARE: "price_1R2gIaPppmUobcNQYQrhw3NT",
     # SubscriptionTier.TITAN: "price_1R2gLzPppmUobcNQyWYhP6xp",
-    SubscriptionTier.HYPERIUM: "price_1R2gDyPppmUobcNQ6R5CYNUl",
+    SubscriptionTier.HYPERIUM: "price_1RHkRqLgqNjeA3ycnFKuRgTB",
 }
 
 class StripeService:
