@@ -10,6 +10,7 @@ FRONTEND_URLS = [
     "https://hyperblockstudio.com",
     "https://www.hyperblockstudio.com",  # Alternative domain
     "https://api.hyperblockstudio.com",
+    "https://admin.hyperblockstudio.com"
 ]
 
 class Settings(BaseSettings):
