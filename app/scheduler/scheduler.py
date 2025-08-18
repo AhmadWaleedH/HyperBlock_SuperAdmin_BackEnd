@@ -42,14 +42,14 @@ class Scheduler:
             # )
             
             # # Also run analytics update daily at midnight
-            # self.scheduler.add_job(
-            #     update_guild_analytics,
-            #     'cron',
-            #     hour=0,
-            #     minute=0,
-            #     id='daily_guild_analytics',
-            #     replace_existing=True
-            # )
+            self.scheduler.add_job(
+                update_guild_analytics,
+                'cron',
+                hour=0,
+                minute=0,
+                id='daily_guild_analytics',
+                replace_existing=True
+            )
 
             # self.scheduler.add_job(
             #     update_guild_analytics,
