@@ -9,6 +9,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from typing import Optional
 import httpx
+from ...core.http_client import get_http_client
 
 from ...config import settings
 from ...db.database import get_database
@@ -112,32 +113,40 @@ async def discord_callback(code: str, state: str, request: Request, db=Depends(g
         'redirect_uri': DISCORD_REDIRECT_URI
     }
     
-    async with httpx.AsyncClient() as client:
-        token_response = await client.post(f"{DISCORD_API_ENDPOINT}/oauth2/token", data=token_data)
-        
-        if token_response.status_code != 200:
+    # Use our improved HTTP client context manager
+    async with get_http_client(timeout=30.0) as client:
+        try:
+            token_response = await client.post(f"{DISCORD_API_ENDPOINT}/oauth2/token", data=token_data)
+            
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Failed to retrieve Discord token"
+                )
+            
+            discord_token = token_response.json()
+            discord_access_token = discord_token.get("access_token")
+            discord_refresh_token = discord_token.get("refresh_token")
+            expires_in = discord_token.get("expires_in", 604800)  # Default 7 days
+            token_expires_at = datetime.now() + timedelta(seconds=expires_in)
+            
+            # Get user data from Discord
+            headers = {"Authorization": f"Bearer {discord_token['access_token']}"}
+            user_response = await client.get(f"{DISCORD_API_ENDPOINT}/users/@me", headers=headers)
+            
+            if user_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Failed to retrieve Discord user data"
+                )
+            
+            discord_data = user_response.json()
+        except httpx.RequestError as e:
+            # Handle network-related errors
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Failed to retrieve Discord token"
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Discord service unavailable: {str(e)}"
             )
-        
-        discord_token = token_response.json()
-        discord_access_token = discord_token.get("access_token")
-        discord_refresh_token = discord_token.get("refresh_token")
-        expires_in = discord_token.get("expires_in", 604800)  # Default 7 days
-        token_expires_at = datetime.now() + timedelta(seconds=expires_in)
-        
-        # Get user data from Discord
-        headers = {"Authorization": f"Bearer {discord_token['access_token']}"}
-        user_response = await client.get(f"{DISCORD_API_ENDPOINT}/users/@me", headers=headers)
-        
-        if user_response.status_code != 200:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Failed to retrieve Discord user data"
-            )
-        
-        discord_data = user_response.json()        
     
     # Get or create user in database
     user_repo = UserRepository(db)

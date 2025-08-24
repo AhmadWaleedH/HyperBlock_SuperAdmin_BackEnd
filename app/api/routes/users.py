@@ -156,6 +156,7 @@ async def exchange_guild_points(
 from pydantic import BaseModel, Field
 import httpx
 from ...config import settings
+from ...core.http_client import get_http_client
 
 # Response Models
 class GuildWithStatus(BaseModel):
@@ -201,39 +202,45 @@ async def get_user_discord_guilds(
                 guild_bot_status[discord_guild_id] = guild_doc.botStatus
     
     # Fetch guilds from Discord API
-    async with httpx.AsyncClient() as client:
-        headers = {"Authorization": f"Bearer {current_user.discord_access_token}"}
-        response = await client.get(f"{settings.DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
-        
-        if response.status_code != 200:
+    async with get_http_client(timeout=30.0) as client:
+        try:
+            headers = {"Authorization": f"Bearer {current_user.discord_access_token}"}
+            response = await client.get(f"{settings.DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Failed to retrieve guilds from Discord API",
+                )
+            
+            guilds_data = response.json()
+            
+            # Filter guilds where user has admin permissions
+            # The permission integer 0x8 (8) represents the ADMINISTRATOR permission
+            admin_guilds = [
+                guild for guild in guilds_data 
+                if (int(guild.get("permissions", 0)) & 0x8) == 0x8
+            ]
+            
+            # Map guilds to response format with hyperblock bot status
+            guilds_with_status = [
+                GuildWithStatus(
+                    id=guild["id"],
+                    name=guild["name"],
+                    icon=guild.get("icon"),
+                    has_hyperblock_bot=guild["id"] in hyperblock_guilds_info,
+                    bot_status=guild_bot_status.get(guild["id"]),
+                    permissions=int(guild.get("permissions", 0)),
+                ) 
+                for guild in admin_guilds
+            ]
+            
+            return GuildsResponse(guilds=guilds_with_status)
+        except httpx.RequestError as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Failed to retrieve guilds from Discord API",
+                detail=f"Discord service unavailable: {str(e)}"
             )
-        
-        guilds_data = response.json()
-        
-        # Filter guilds where user has admin permissions
-        # The permission integer 0x8 (8) represents the ADMINISTRATOR permission
-        admin_guilds = [
-            guild for guild in guilds_data 
-            if (int(guild.get("permissions", 0)) & 0x8) == 0x8
-        ]
-        
-        # Map guilds to response format with hyperblock bot status
-        guilds_with_status = [
-            GuildWithStatus(
-                id=guild["id"],
-                name=guild["name"],
-                icon=guild.get("icon"),
-                has_hyperblock_bot=guild["id"] in hyperblock_guilds_info,
-                bot_status=guild_bot_status.get(guild["id"]),
-                permissions=int(guild.get("permissions", 0)),
-            ) 
-            for guild in admin_guilds
-        ]
-        
-        return GuildsResponse(guilds=guilds_with_status)
     
 # ------------------------------------------------------------------------------------------
 # Twitter Connect
@@ -333,7 +340,7 @@ async def twitter_callback(
     }
         
     try:
-        async with httpx.AsyncClient() as client:
+        async with get_http_client(timeout=30.0) as client:
             # Create Basic auth header with client credentials
             auth_credentials = f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}"
             encoded_credentials = base64.b64encode(auth_credentials.encode()).decode()
@@ -572,7 +579,7 @@ async def get_transaction(request: TransactionRequest = Body(...)):
     chain = request.chain.lower()
     tx_hash = request.txHash
     
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with get_http_client(timeout=10.0) as client:
         try:
             # EVM-compatible chains (Ethereum, BSC, Polygon)
             if chain in ["ethereum", "bsc", "polygon"]:
