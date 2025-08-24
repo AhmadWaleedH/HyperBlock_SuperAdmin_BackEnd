@@ -55,3 +55,8 @@ node_modules/
 .cache/
 *.sqlite3
 *.sqlite3-journal
+
+# Sqlite
+*.sqlite3
+*.sqlite3-journal
+*.sqlite
