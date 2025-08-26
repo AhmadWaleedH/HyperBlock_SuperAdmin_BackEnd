@@ -26,6 +26,10 @@ async def connect_to_mongo():
         db.client = AsyncIOMotorClient(
             settings.MONGODB_URI,
             serverSelectionTimeoutMS=5000,
+            maxPoolSize=100,  # Increase connection pool size for better concurrency
+            minPoolSize=10,   # Maintain minimum connections
+            maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
+            waitQueueTimeoutMS=5000,  # Maximum time to wait for a connection from the pool
             tls=True,
             tlsCAFile=certifi.where()
         )
