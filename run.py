@@ -22,7 +22,7 @@ if platform.system() == "Windows":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     logger.info("Using WindowsSelectorEventLoopPolicy for Windows")
 else:
-    # For Unix-based systems, ensure we use the default policy with proper cleanup
+    # For Unix-based systems, try to use uvloop for better performance
     try:
         import uvloop
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -36,16 +36,21 @@ if __name__ == "__main__":
     
     # Configure asyncio debug mode based on environment
     debug_mode = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+    
+    # Set PYTHONASYNCIODDEBUG environment variable if debug mode is enabled
     if debug_mode:
+        os.environ["PYTHONASYNCIODDEBUG"] = "1"
         logger.info("Running in debug mode with asyncio debug enabled")
     
-    # Run the API with explicit event loop settings
+    # Run the API with improved configuration
     logger.info(f"Starting HyperBlock API on port {port}")
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=port,
-        reload=True,
-        log_level="info",
-        loop="auto"
+        reload=debug_mode,  # Only reload in debug mode
+        log_level="info" if debug_mode else "warning",
+        loop="auto",
+        timeout_keep_alive=120,  # Increase keep-alive timeout
+        workers=1  # Use single worker to avoid issues with the event loop
     )
