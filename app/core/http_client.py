@@ -5,11 +5,14 @@ Provides robust async HTTP client handling to avoid event loop issues
 
 import httpx
 import asyncio
+import logging
 from typing import Optional, Dict, Any, Union
 from contextlib import asynccontextmanager
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
-async def get_http_client(timeout: float = 30.0) -> httpx.AsyncClient:
+async def get_http_client(timeout: float = 30.0):
     """
     Context manager for httpx AsyncClient that properly manages the client lifecycle
     and prevents "Event loop is closed" errors.
@@ -24,11 +27,39 @@ async def get_http_client(timeout: float = 30.0) -> httpx.AsyncClient:
     Yields:
         httpx.AsyncClient: The HTTP client
     """
-    client = httpx.AsyncClient(timeout=timeout)
+    # Check if event loop is running to prevent "Event loop is closed" errors
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_closed():
+            logger.warning("Detected closed event loop, creating a new one")
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+    except RuntimeError:
+        logger.warning("No running event loop detected, creating a new one")
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        
+    # Create client with timeout and proper limits
+    client = httpx.AsyncClient(
+        timeout=timeout,
+        limits=httpx.Limits(
+            max_connections=100,
+            max_keepalive_connections=20,
+            keepalive_expiry=30.0
+        )
+    )
+    
     try:
         yield client
+    except Exception as e:
+        logger.error(f"Error in HTTP client: {str(e)}")
+        raise
     finally:
-        await client.aclose()
+        try:
+            await client.aclose()
+        except Exception as e:
+            logger.warning(f"Error closing HTTP client: {str(e)}")
+            # Suppress exception during cleanup
 
 async def fetch_json(
     url: str,
